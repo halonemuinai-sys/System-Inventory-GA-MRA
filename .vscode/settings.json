@@ -1,0 +1,7 @@
+{
+    "python.defaultInterpreterPath": "C:\\laragon\\bin\\python\\python-3.13\\python.exe",
+    "python.analysis.extraPaths": [
+        "C:\\laragon\\bin\\python\\python-3.13\\Lib\\site-packages"
+    ],
+    "css.lint.unknownAtRules": "ignore"
+}
