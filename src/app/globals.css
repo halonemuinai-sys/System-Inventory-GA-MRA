@@ -104,6 +104,7 @@ body {
   width: calc(100% - 256px);
   background: var(--bg);
   min-height: 100vh;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ── Sidebar ───────────────────────────────────────────────── */
@@ -118,6 +119,7 @@ body {
   display: flex;
   flex-direction: column;
   box-shadow: 0 20px 60px rgba(15,23,42,0.08);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sidebar-logo {
@@ -164,6 +166,41 @@ body {
   font-weight: 600;
   border: 1px solid var(--blue-border);
   box-shadow: 0 1px 4px var(--blue-glow);
+}
+
+/* ── Sidebar Overlay & Mobile ──────────────────────────────── */
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(2px);
+  z-index: 190;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+
+.sidebar-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (max-width: 1024px) {
+  .sidebar {
+    transform: translateX(-100%);
+  }
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  .main-content {
+    margin-left: 0;
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .nav-version, .nav-avatar { display: none; }
+  .navbar { padding: 0.5rem 1rem; }
 }
 
 /* ── Navbar ────────────────────────────────────────────────── */

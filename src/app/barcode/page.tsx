@@ -172,17 +172,21 @@ export default function BarcodePage() {
   const [tab, setTab]  = useState<'design' | 'bulk' | 'assets'>('design');
   const [bulkText, setBulkText] = useState('');
   const [copied, setCopied]     = useState('');
-  const [assets, setAssets]     = useState<{ id: number; asset_code: string; asset_name: string; category: string }[]>([]);
+  const [assets, setAssets]     = useState<{ id: number; asset_code: string; asset_name: string; category: string; company: string; category_id: number; company_id: number }[]>([]);
   const [assetSearch, setAssetSearch] = useState('');
+  const [assetCompany, setAssetCompany] = useState('');
+  const [assetCategory, setAssetCategory] = useState('');
+  const [meta, setMeta] = useState<{ companies: any[], categories: any[] }>({ companies: [], categories: [] });
 
   const cfg = (k: keyof BarcodeConfig, v: any) => setConfig(p => ({ ...p, [k]: v }));
   const activeItem = items.find(i => i.id === activeId) || items[0];
 
-  // Load assets
+  // Load assets and meta
   useEffect(() => {
-    fetch('/api/assets?limit=200').then(r => r.json()).then(d => {
+    fetch('/api/assets?limit=500').then(r => r.json()).then(d => {
       if (d.data) setAssets(d.data);
     }).catch(() => {});
+    fetch('/api/assets/meta').then(r => r.json()).then(setMeta).catch(() => {});
   }, []);
 
   const addItem = () => {
@@ -260,9 +264,12 @@ export default function BarcodePage() {
     setTimeout(() => setCopied(''), 1500);
   };
 
-  const filteredAssets = assets.filter(a =>
-    !assetSearch || a.asset_code.toLowerCase().includes(assetSearch.toLowerCase()) ||
-    a.asset_name.toLowerCase().includes(assetSearch.toLowerCase()));
+  const filteredAssets = assets.filter(a => {
+    const matchSearch = !assetSearch || a.asset_code.toLowerCase().includes(assetSearch.toLowerCase()) || a.asset_name.toLowerCase().includes(assetSearch.toLowerCase());
+    const matchCompany = !assetCompany || a.company === meta.companies.find(c => c.id == assetCompany)?.name;
+    const matchCategory = !assetCategory || a.category === meta.categories.find(c => c.id == assetCategory)?.name;
+    return matchSearch && matchCompany && matchCategory;
+  });
 
   // ─────────────────────────────────────────────────────────────
   const iStyle2: React.CSSProperties = {
@@ -336,11 +343,11 @@ export default function BarcodePage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
                 <p style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Konten</p>
                 <label style={{ fontSize: '0.68rem', color: 'var(--text-3)' }}>Teks / Kode</label>
-                <input style={iStyle2} value={activeItem.text}
+                <input style={iStyle2} value={activeItem.text} title="Teks Barcode"
                   onChange={e => updateItem(activeId, { text: e.target.value })}
                   placeholder="Masukkan kode atau teks…" />
                 <label style={{ fontSize: '0.68rem', color: 'var(--text-3)' }}>Label (teks di bawah)</label>
-                <input style={iStyle2} value={activeItem.label}
+                <input style={iStyle2} value={activeItem.label} title="Label Barcode"
                   onChange={e => updateItem(activeId, { label: e.target.value })}
                   placeholder="Label opsional…" />
               </div>
@@ -372,25 +379,25 @@ export default function BarcodePage() {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                     <div>
                       <label style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>Lebar garis: {config.width}px</label>
-                      <input type="range" min={1} max={5} step={0.5} value={config.width}
+                      <input type="range" min={1} max={5} step={0.5} value={config.width} title="Lebar Garis"
                         onChange={e => cfg('width', parseFloat(e.target.value))}
                         style={{ width: '100%', accentColor: 'var(--blue)' }} />
                     </div>
                     <div>
                       <label style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>Tinggi: {config.height}px</label>
-                      <input type="range" min={40} max={160} step={5} value={config.height}
+                      <input type="range" min={40} max={160} step={5} value={config.height} title="Tinggi Barcode"
                         onChange={e => cfg('height', parseInt(e.target.value))}
                         style={{ width: '100%', accentColor: 'var(--blue)' }} />
                     </div>
                     <div>
                       <label style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>Font: {config.fontSize}px</label>
-                      <input type="range" min={8} max={24} step={1} value={config.fontSize}
+                      <input type="range" min={8} max={24} step={1} value={config.fontSize} title="Ukuran Font"
                         onChange={e => cfg('fontSize', parseInt(e.target.value))}
                         style={{ width: '100%', accentColor: 'var(--blue)' }} />
                     </div>
                     <div>
                       <label style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>Margin: {config.margin}px</label>
-                      <input type="range" min={0} max={30} step={2} value={config.margin}
+                      <input type="range" min={0} max={30} step={2} value={config.margin} title="Margin"
                         onChange={e => cfg('margin', parseInt(e.target.value))}
                         style={{ width: '100%', accentColor: 'var(--blue)' }} />
                     </div>
@@ -407,11 +414,11 @@ export default function BarcodePage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                   <p style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>QR Settings</p>
                   <label style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>Ukuran: {config.qrSize}px</label>
-                  <input type="range" min={100} max={400} step={20} value={config.qrSize}
+                  <input type="range" min={100} max={400} step={20} value={config.qrSize} title="Ukuran QR Code"
                     onChange={e => cfg('qrSize', parseInt(e.target.value))}
                     style={{ width: '100%', accentColor: 'var(--blue)' }} />
                   <label style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>Error correction</label>
-                  <select style={iStyle2} value={config.qrErrorLevel} onChange={e => cfg('qrErrorLevel', e.target.value as any)}>
+                  <select style={iStyle2} value={config.qrErrorLevel} onChange={e => cfg('qrErrorLevel', e.target.value as any)} title="QR Error Correction Level">
                     <option value="L">L — Low (7%)</option>
                     <option value="M">M — Medium (15%)</option>
                     <option value="Q">Q — Quartile (25%)</option>
@@ -438,18 +445,18 @@ export default function BarcodePage() {
                   <div>
                     <label style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>Background</label>
                     <div style={{ display: 'flex', gap: 6, marginTop: 3 }}>
-                      <input type="color" value={config.background} onChange={e => cfg('background', e.target.value)}
+                      <input type="color" value={config.background} onChange={e => cfg('background', e.target.value)} title="Warna Background (Picker)"
                         style={{ width: 36, height: 32, border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', padding: 2, background: 'none' }} />
-                      <input style={{ ...iStyle2, fontFamily: 'monospace', fontSize: '0.72rem' }}
+                      <input style={{ ...iStyle2, fontFamily: 'monospace', fontSize: '0.72rem' }} title="Warna Background (Hex)"
                         value={config.background} onChange={e => cfg('background', e.target.value)} />
                     </div>
                   </div>
                   <div>
                     <label style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>Warna Garis</label>
                     <div style={{ display: 'flex', gap: 6, marginTop: 3 }}>
-                      <input type="color" value={config.lineColor} onChange={e => cfg('lineColor', e.target.value)}
+                      <input type="color" value={config.lineColor} onChange={e => cfg('lineColor', e.target.value)} title="Warna Garis (Picker)"
                         style={{ width: 36, height: 32, border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', padding: 2, background: 'none' }} />
-                      <input style={{ ...iStyle2, fontFamily: 'monospace', fontSize: '0.72rem' }}
+                      <input style={{ ...iStyle2, fontFamily: 'monospace', fontSize: '0.72rem' }} title="Warna Garis (Hex)"
                         value={config.lineColor} onChange={e => cfg('lineColor', e.target.value)} />
                     </div>
                   </div>
@@ -483,8 +490,22 @@ export default function BarcodePage() {
           {tab === 'assets' && (
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '1.1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <p style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Dari Data Aset</p>
-              <input style={iStyle2} placeholder="Cari kode / nama aset…"
-                value={assetSearch} onChange={e => setAssetSearch(e.target.value)} />
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <input style={iStyle2} placeholder="Cari kode / nama aset…" title="Cari Aset"
+                  value={assetSearch} onChange={e => setAssetSearch(e.target.value)} />
+                  
+                <select style={iStyle2} value={assetCompany} onChange={e => setAssetCompany(e.target.value)} title="Filter Perusahaan">
+                  <option value="">-- Semua Perusahaan --</option>
+                  {meta.companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+
+                <select style={iStyle2} value={assetCategory} onChange={e => setAssetCategory(e.target.value)} title="Filter Kategori">
+                  <option value="">-- Semua Kategori --</option>
+                  {meta.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+
               <div style={{ maxHeight: 340, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {filteredAssets.slice(0, 50).map(a => (
                   <button key={a.id} type="button" onClick={() => addFromAsset(a)} style={{
@@ -541,7 +562,7 @@ export default function BarcodePage() {
                     {item.text.slice(0, 12)}{item.text.length > 12 ? '…' : ''} #{i + 1}
                   </button>
                   {items.length > 1 && (
-                    <button type="button" onClick={() => removeItem(item.id)} style={{
+                    <button type="button" onClick={() => removeItem(item.id)} title="Hapus Item" aria-label="Hapus Item" style={{
                       padding: '0.3rem 0.35rem', borderRadius: '0 6px 0 0',
                       border: '1px solid var(--border)', borderLeft: 'none',
                       background: 'var(--surface-2)', cursor: 'pointer', color: 'var(--text-3)',
@@ -565,7 +586,7 @@ export default function BarcodePage() {
           }}>
             <BarcodePreview item={activeItem} config={config} />
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-              <button type="button" className="btn" style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem' }}
+              <button type="button" className="btn" style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem' }} title="Salin Teks Barcode"
                 onClick={() => copyText(activeItem.text)}>
                 {copied === activeItem.text ? <Check size={13} color="var(--emerald)" /> : <Copy size={13} />}
                 {copied === activeItem.text ? 'Disalin!' : 'Salin Teks'}

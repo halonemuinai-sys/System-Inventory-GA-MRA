@@ -1,12 +1,13 @@
 'use client';
 
 import './globals.css';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Package, Truck, HardDrive,
   Users, ShieldCheck, FileText, Wrench, BarChart3,
-  Settings, LogOut, Bell, ChevronRight, Sun, Moon, Barcode,
+  Settings, LogOut, Bell, ChevronRight, Sun, Moon, Barcode, Menu
 } from 'lucide-react';
 import { ThemeProvider, useTheme } from '@/lib/theme';
 
@@ -38,7 +39,10 @@ const menuGroups = [
   },
   {
     label: 'TOOLS',
-    items: [{ icon: Barcode, label: 'Barcode Generator', href: '/barcode' }],
+    items: [
+      { icon: Barcode, label: 'Barcode Generator', href: '/barcode' },
+      { icon: ShieldCheck, label: 'Stock Opname', href: '/stock-opname' },
+    ],
   },
 ];
 
@@ -83,11 +87,23 @@ function NavThemeBtn() {
 // ── Shell (uses theme) ─────────────────────────────────────────
 function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Close sidebar when navigating on mobile
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
 
   return (
     <div className="app-container">
+      {/* OVERLAY FOR MOBILE */}
+      <div 
+        className={`sidebar-overlay ${sidebarOpen ? 'open' : ''} lg:hidden`}
+        onClick={() => setSidebarOpen(false)}
+      />
+
       {/* SIDEBAR */}
-      <aside className="sidebar">
+      <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-logo">
           <div>
             <p className="text-sm font-900 letter-tight text-text leading-tight">
@@ -140,8 +156,16 @@ function Shell({ children }: { children: React.ReactNode }) {
 
       {/* MAIN */}
       <div className="main-content">
-        <nav className="navbar">
-          <div className="nav-right">
+        <nav className="navbar" style={{ justifyContent: 'space-between' }}>
+          <button 
+            className="lg:hidden p-1.5 -ml-2 text-text-2 hover:bg-surface-2 rounded-md"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Open Menu"
+          >
+            <Menu size={20} />
+          </button>
+
+          <div className="nav-right ml-auto">
             <NavThemeBtn />
             <div className="relative cursor-pointer" aria-label="Notifications" title="Notifications">
               <Bell size={17} className="text-text-3" />
