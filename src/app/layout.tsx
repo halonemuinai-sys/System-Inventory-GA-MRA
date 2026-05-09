@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Package, Truck, HardDrive,
   Users, ShieldCheck, FileText, Wrench, BarChart3,
-  Settings, LogOut, Bell, ChevronRight, Sun, Moon,
+  Settings, LogOut, Bell, ChevronRight, Sun, Moon, Barcode,
 } from 'lucide-react';
 import { ThemeProvider, useTheme } from '@/lib/theme';
 
@@ -35,6 +35,10 @@ const menuGroups = [
   {
     label: 'KEUANGAN',
     items: [{ icon: BarChart3, label: 'Expenses', href: '/expenses' }],
+  },
+  {
+    label: 'TOOLS',
+    items: [{ icon: Barcode, label: 'Barcode Generator', href: '/barcode' }],
   },
 ];
 
