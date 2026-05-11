@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import {
   Search, Plus, Eye, Edit2, X, Save, AlertCircle,
   Star, Phone, Mail, Building2, ChevronLeft, ChevronRight,
-  RefreshCw, Loader2, Users, BadgeCheck, FileText, Landmark,
+  RefreshCw, Loader2, Users, BadgeCheck, FileText, Landmark, Trash2,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────
@@ -249,6 +249,15 @@ export default function VendorsPage() {
     }
   };
 
+  const handleDelete = async (id: number, name: string) => {
+    if (!confirm(`Hapus vendor "${name}"? Tindakan ini tidak bisa dibatalkan.`)) return;
+    try {
+      const res = await fetch(`/api/vendors/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error();
+      setVendors(prev => prev.filter(v => v.id !== id));
+    } catch { alert('Gagal menghapus vendor'); }
+  };
+
   const openAdd  = () => { setEditVendor(null); setForm(EMPTY_FORM); setFormError(''); setShowAdd(true); };
   const closeForm = () => { setShowAdd(false); setEditVendor(null); setForm(EMPTY_FORM); setFormError(''); };
 
@@ -373,6 +382,7 @@ export default function VendorsPage() {
                   <button title="Edit" aria-label="Edit vendor" onClick={() => openEdit(v.id)} className="btn-icon-blue">
                     <Edit2 size={14} />
                   </button>
+                  <button className="btn-icon text-rose hover:bg-rose-light" title="Hapus" aria-label={`Hapus ${v.vendor_name}`} onClick={() => handleDelete(v.id, v.vendor_name)}><Trash2 size={14}/></button>
                 </div>
               </td>
             </tr>

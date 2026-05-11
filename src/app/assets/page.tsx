@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Search, Plus, Eye, Edit2, Save, AlertCircle,
-  Package, Tag, Building2, RefreshCw, Loader2,
+  Package, Tag, Building2, RefreshCw, Loader2, Trash2,
 } from 'lucide-react';
 import { 
   Badge, ModalShell, FF, PaginationBar, TableShell, 
@@ -148,6 +148,15 @@ export default function AssetsPage() {
   }, [search, catFilter, statFilter]);
 
   useEffect(() => { fetchAssets(1); }, [fetchAssets]);
+
+  const handleDelete = async (id: number, name: string) => {
+    if (!confirm(`Hapus aset "${name}"? Tindakan ini tidak bisa dibatalkan.`)) return;
+    try {
+      const res = await fetch(`/api/assets/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error();
+      setAssets(prev => prev.filter(a => a.id !== id));
+    } catch { alert('Gagal menghapus aset'); }
+  };
 
   const openDetail = async (id: number) => {
     setDetailLoading(true); setDetailAsset(null);
@@ -356,6 +365,7 @@ export default function AssetsPage() {
                   <div className="flex-end gap-2">
                     <button className="btn-icon" title="Lihat Detail" aria-label={`Lihat detail aset ${a.asset_name}`} onClick={() => openDetail(a.id)}><Eye size={14} /></button>
                     <button className="btn-icon-blue" title="Edit" aria-label={`Edit aset ${a.asset_name}`} onClick={() => openEdit(a.id)}><Edit2 size={14} /></button>
+                    <button className="btn-icon text-rose hover:bg-rose-light" title="Hapus" aria-label={`Hapus aset ${a.asset_name}`} onClick={() => handleDelete(a.id, a.asset_name)}><Trash2 size={14} /></button>
                   </div>
                 </td>
               </tr>

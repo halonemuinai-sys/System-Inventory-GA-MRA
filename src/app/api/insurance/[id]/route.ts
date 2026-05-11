@@ -28,3 +28,17 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
      b.information||null, b.status||'Active', id]);
   return NextResponse.json({ message: 'Updated' });
 }
+
+export async function DELETE(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    await query(`DELETE FROM insurances WHERE id = $1`, [id]);
+    return NextResponse.json({ message: 'Deleted' });
+  } catch (error) {
+    console.error('insurance DELETE error:', error);
+    return NextResponse.json({ error: 'Failed to delete' }, { status: 500 });
+  }
+}

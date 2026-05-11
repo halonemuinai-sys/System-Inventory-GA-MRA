@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Search, Plus, Eye, Edit2, Loader2, Save, HardDrive, AlertCircle } from 'lucide-react';
+import { Search, Plus, Eye, Edit2, Loader2, Save, HardDrive, AlertCircle, Trash2 } from 'lucide-react';
 import { Badge, ModalShell, FF, SLabel, PaginationBar, TableShell, InfoRow, SBox, FormError } from '@/components/PageShared';
 
 const fmt = (v: number) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(v || 0);
@@ -57,6 +57,14 @@ export default function RentalsPage() {
 
   useEffect(() => { load(1); }, [load]);
 
+  const handleDelete = async (id: number, name: string) => {
+    if (!confirm(`Hapus rental "${name}"? Tindakan ini tidak bisa dibatalkan.`)) return;
+    try {
+      const res = await fetch(`/api/rentals/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error();
+      setRows(prev => prev.filter(r => r.id !== id));
+    } catch { alert('Gagal menghapus rental'); }
+  };
   const openDetail = async (id:number) => { setDlLoading(true); setDetail(null); const r = await fetch(`/api/rentals/${id}`); setDetail(await r.json()); setDlLoading(false); };
   const openEdit   = async (id:number) => {
     const r = await fetch(`/api/rentals/${id}`); const d = await r.json();
@@ -147,6 +155,7 @@ export default function RentalsPage() {
                     <div className="flex-end gap-2">
                       <button title="Lihat detail rental" aria-label={`Lihat detail ${r.item_name}`} onClick={()=>openDetail(r.id)} className="btn-icon"><Eye size={14}/></button>
                       <button title="Edit data rental" aria-label={`Edit ${r.item_name}`} onClick={()=>openEdit(r.id)} className="btn-icon-blue"><Edit2 size={14}/></button>
+                      <button className="btn-icon text-rose hover:bg-rose-light" title="Hapus" aria-label={`Hapus ${r.item_name}`} onClick={() => handleDelete(r.id, r.item_name)}><Trash2 size={14}/></button>
                     </div>
                   </td>
                 </tr>

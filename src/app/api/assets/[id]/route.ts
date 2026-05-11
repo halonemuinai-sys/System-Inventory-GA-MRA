@@ -90,3 +90,17 @@ export async function PUT(
     return NextResponse.json({ error: 'Failed to update asset' }, { status: 500 });
   }
 }
+
+export async function DELETE(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    await query(`DELETE FROM assets WHERE id = $1`, [id]);
+    return NextResponse.json({ message: 'Asset deleted' });
+  } catch (error) {
+    console.error('Asset DELETE error:', error);
+    return NextResponse.json({ error: 'Failed to delete asset' }, { status: 500 });
+  }
+}

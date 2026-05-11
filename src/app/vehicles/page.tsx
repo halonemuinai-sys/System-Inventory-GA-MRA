@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Search, Plus, Eye, Edit2, Loader2, Save, Truck, AlertCircle, Calendar } from 'lucide-react';
+import { Search, Plus, Eye, Edit2, Loader2, Save, Truck, AlertCircle, Calendar, Trash2 } from 'lucide-react';
 import { 
   Badge, ModalShell, FF, SLabel, PaginationBar, 
   TableShell, InfoRow, SBox, FormError, iStyle 
@@ -78,6 +78,15 @@ export default function VehiclesPage() {
       information:d.information||'' 
     }); 
     setFormErr(''); 
+  };
+
+  const handleDelete = async (id: number, name: string) => {
+    if (!confirm(`Hapus kendaraan "${name}"? Tindakan ini tidak bisa dibatalkan.`)) return;
+    try {
+      const res = await fetch(`/api/vehicles/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error();
+      setRows(prev => prev.filter(r => r.id !== id));
+    } catch { alert('Gagal menghapus kendaraan'); }
   };
 
   const openAdd    = () => { setEditRow(null); setForm(EMPTY); setFormErr(''); setShowAdd(true); };
@@ -169,6 +178,7 @@ export default function VehiclesPage() {
                     <div className="flex-end gap-2">
                       <button className="btn-icon" title="Lihat Detail" aria-label="Lihat detail kendaraan" onClick={() => openDetail(v.id)}><Eye size={14}/></button>
                       <button className="btn-icon-blue" title="Edit" aria-label="Edit kendaraan" onClick={() => openEdit(v.id)}><Edit2 size={14}/></button>
+                      <button className="btn-icon text-rose hover:bg-rose-light" title="Hapus" aria-label={`Hapus ${v.plate_number}`} onClick={() => handleDelete(v.id, v.plate_number)}><Trash2 size={14}/></button>
                     </div>
                   </td>
                 </tr>

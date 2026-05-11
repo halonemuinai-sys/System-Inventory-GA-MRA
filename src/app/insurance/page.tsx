@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Search, Plus, Eye, Edit2, Loader2, Save, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Search, Plus, Eye, Edit2, Loader2, Save, ShieldCheck, AlertCircle, Trash2 } from 'lucide-react';
 import { 
   Badge, ModalShell, FF, SLabel, PaginationBar, 
   TableShell, InfoRow, SBox, FormError, iStyle 
@@ -70,9 +70,18 @@ export default function InsurancePage() {
 
   useEffect(() => { load(1); }, [load]);
 
-  const openDetail = async (id:number) => { 
-    setDlLoading(true); setDetail(null); 
-    const r = await fetch(`/api/insurance/${id}`); 
+  const handleDelete = async (id: number, name: string) => {
+    if (!confirm(`Hapus polis "${name}"? Tindakan ini tidak bisa dibatalkan.`)) return;
+    try {
+      const res = await fetch(`/api/insurance/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error();
+      setRows(prev => prev.filter(r => r.id !== id));
+    } catch { alert('Gagal menghapus polis'); }
+  };
+
+  const openDetail = async (id:number) => {
+    setDlLoading(true); setDetail(null);
+    const r = await fetch(`/api/insurance/${id}`);
     setDetail(await r.json()); 
     setDlLoading(false); 
   };
@@ -193,6 +202,7 @@ export default function InsurancePage() {
                     <div className="flex-end gap-2">
                       <button className="btn-icon" title="Lihat Detail" aria-label="Lihat detail polis" onClick={() => openDetail(ins.id)}><Eye size={14}/></button>
                       <button className="btn-icon-blue" title="Edit" aria-label="Edit polis" onClick={() => openEdit(ins.id)}><Edit2 size={14}/></button>
+                      <button className="btn-icon text-rose hover:bg-rose-light" title="Hapus" aria-label="Hapus polis" onClick={() => handleDelete(ins.id, ins.policy_number)}><Trash2 size={14}/></button>
                     </div>
                   </td>
                 </tr>
