@@ -232,7 +232,7 @@ export default function StockOpnamePage() {
             <div className="flex flex-col items-center gap-5 py-4">
               <QrCode size={56} className="text-blue opacity-40" />
               <p className="text-center text-sm text-text-2">
-                Arahkan barcode scanner ke input di bawah.<br />
+                Scan barcode aset atau <b>ketik kode aset</b> secara manual, lalu tekan <b>Enter</b>.<br />
                 Aset otomatis tersimpan sebagai <b>Ditemukan</b>.
               </p>
 
@@ -253,7 +253,7 @@ export default function StockOpnamePage() {
                   value={scanInput}
                   onChange={e => setScanInput(e.target.value)}
                   className="w-full text-center text-xl font-mono font-800 tracking-widest"
-                  placeholder="Scan barcode di sini..."
+                  placeholder="Scan atau ketik kode aset, tekan Enter..."
                   autoFocus
                 />
                 <button type="submit" className="hidden" aria-label="Submit scan" />
