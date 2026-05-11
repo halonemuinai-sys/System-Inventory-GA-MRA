@@ -122,13 +122,16 @@ export default function StockOpnamePage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Gagal memproses');
+      const wasPending = checks.find(c => c.asset_code === code)?.check_status === 'Pending';
       setScanMsg({ text: `✓ Ditemukan: ${data.asset.asset_name}`, type: 'success' });
       setChecks(checks.map(c => c.asset_code === code ? { ...c, check_status: 'Found' } : c));
-      setActiveSession({
-        ...activeSession,
-        checked_count: activeSession.checked_count + 1,
-        found_count:   activeSession.found_count + 1,
-      });
+      if (wasPending) {
+        setActiveSession({
+          ...activeSession,
+          checked_count: activeSession.checked_count + 1,
+          found_count:   activeSession.found_count + 1,
+        });
+      }
     } catch (e: any) {
       setScanMsg({ text: e.message, type: 'error' });
     }
