@@ -36,6 +36,9 @@ export default function RentalsPage() {
   const [form, setForm]             = useState<any>(EMPTY);
   const [saving, setSaving]         = useState(false);
   const [formErr, setFormErr]       = useState('');
+  
+  const [deleteItem, setDeleteItem] = useState<{ id: number; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const LIMIT = 20;
 
   useEffect(() => {
@@ -57,13 +60,23 @@ export default function RentalsPage() {
 
   useEffect(() => { load(1); }, [load]);
 
-  const handleDelete = async (id: number, name: string) => {
-    if (!confirm(`Hapus rental "${name}"? Tindakan ini tidak bisa dibatalkan.`)) return;
+  const confirmDelete = (item: { id: number; name: string }) => {
+    setDeleteItem(item);
+  };
+
+  const executeDelete = async () => {
+    if (!deleteItem) return;
+    setDeleting(true);
     try {
-      const res = await fetch(`/api/rentals/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/rentals/${deleteItem.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error();
-      setRows(prev => prev.filter(r => r.id !== id));
-    } catch { alert('Gagal menghapus rental'); }
+      setRows(prev => prev.filter(r => r.id !== deleteItem.id));
+      setDeleteItem(null);
+    } catch { 
+      alert('Gagal menghapus rental'); 
+    } finally {
+      setDeleting(false);
+    }
   };
   const openDetail = async (id:number) => { setDlLoading(true); setDetail(null); const r = await fetch(`/api/rentals/${id}`); setDetail(await r.json()); setDlLoading(false); };
   const openEdit   = async (id:number) => {
@@ -155,7 +168,7 @@ export default function RentalsPage() {
                     <div className="flex-end gap-2">
                       <button title="Lihat detail rental" aria-label={`Lihat detail ${r.item_name}`} onClick={()=>openDetail(r.id)} className="btn-icon"><Eye size={14}/></button>
                       <button title="Edit data rental" aria-label={`Edit ${r.item_name}`} onClick={()=>openEdit(r.id)} className="btn-icon-blue"><Edit2 size={14}/></button>
-                      <button className="btn-icon text-rose hover:bg-rose-light" title="Hapus" aria-label={`Hapus ${r.item_name}`} onClick={() => handleDelete(r.id, r.item_name)}><Trash2 size={14}/></button>
+                      <button className="btn-icon text-rose hover:bg-rose-light" title="Hapus" aria-label={`Hapus ${r.item_name}`} onClick={() => confirmDelete({ id: r.id, name: r.item_name })}><Trash2 size={14}/></button>
                     </div>
                   </td>
                 </tr>
@@ -239,6 +252,43 @@ export default function RentalsPage() {
               <button className="btn" onClick={closeForm} disabled={saving} title="Batal">Batal</button>
               <button className="btn btn-primary min-w-130" onClick={save} disabled={saving} title={editRow?'Simpan Perubahan':'Tambah Rental'}>
                 {saving?<><Loader2 size={14} className="animate-spin"/> Menyimpan…</>:<><Save size={14}/> {editRow?'Simpan':'Tambah'}</>}
+              </button>
+            </div>
+          </div>
+        </ModalShell>
+      )}
+      {deleteItem && (
+        <ModalShell 
+          title="" 
+          onClose={() => !deleting && setDeleteItem(null)} 
+          size="sm"
+          overlayClassName="modal-top-align"
+          containerClassName="modal-top-content"
+        >
+          <div className="flex flex-col gap-3 text-center items-center py-2">
+            <div className="w-12 h-12 bg-rose-light text-rose rounded-full flex items-center justify-center mb-1">
+              <Trash2 size={24} />
+            </div>
+            <h3 className="text-md font-800 text-text">Hapus Rental?</h3>
+            <p className="text-sm text-text-2">
+              Anda yakin ingin menghapus <b>{deleteItem.name}</b>?
+            </p>
+            <div className="flex gap-3 w-full mt-2">
+              <button 
+                type="button" 
+                className="btn flex-1 justify-center py-2" 
+                onClick={() => setDeleteItem(null)}
+                disabled={deleting}
+              >
+                Batal
+              </button>
+              <button 
+                type="button" 
+                className="btn bg-rose text-white border-none flex-1 justify-center py-2 hover:opacity-90" 
+                onClick={executeDelete}
+                disabled={deleting}
+              >
+                {deleting ? <><Loader2 size={16} className="animate-spin" /> ...</> : 'Ya, Hapus'}
               </button>
             </div>
           </div>

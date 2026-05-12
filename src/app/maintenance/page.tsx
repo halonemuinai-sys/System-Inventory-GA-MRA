@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Search, Plus, Eye, Edit2, Loader2, Save, Wrench, AlertCircle } from 'lucide-react';
+import { Search, Plus, Eye, Edit2, Loader2, Save, Wrench, AlertCircle, Trash2 } from 'lucide-react';
 import { 
   Badge, ModalShell, FF, SLabel, PaginationBar, 
   TableShell, InfoRow, SBox, FormError, iStyle 
@@ -49,6 +49,9 @@ export default function MaintenancePage() {
   const [form, setForm]             = useState<any>(EMPTY);
   const [saving, setSaving]         = useState(false);
   const [formErr, setFormErr]       = useState('');
+  
+  const [deleteItem, setDeleteItem] = useState<{ id: number; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const LIMIT = 20;
 
   useEffect(() => {
@@ -99,6 +102,25 @@ export default function MaintenancePage() {
   const openAdd   = () => { setEditRow(null); setForm(EMPTY); setFormErr(''); setShowAdd(true); };
   const closeForm = () => { setShowAdd(false); setEditRow(null); setForm(EMPTY); setFormErr(''); };
   const sf        = (k:string,v:string) => setForm((f:any) => ({...f,[k]:v}));
+
+  const confirmDelete = (item: { id: number; name: string }) => {
+    setDeleteItem(item);
+  };
+
+  const executeDelete = async () => {
+    if (!deleteItem) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/maintenance/${deleteItem.id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error();
+      setRows(prev => prev.filter(m => m.id !== deleteItem.id));
+      setDeleteItem(null);
+    } catch { 
+      alert('Gagal menghapus data maintenance'); 
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const save = async () => {
     if (!form.asset_name.trim()) { setFormErr('Nama aset wajib diisi'); return; }
@@ -188,6 +210,7 @@ export default function MaintenancePage() {
                     <div className="flex-end gap-2">
                       <button className="btn-icon" title="Lihat Detail" aria-label="Lihat detail layanan" onClick={() => openDetail(m.id)}><Eye size={14}/></button>
                       <button className="btn-icon-blue" title="Edit" aria-label="Edit layanan" onClick={() => openEdit(m.id)}><Edit2 size={14}/></button>
+                      <button className="btn-icon text-rose hover:bg-rose-light" title="Hapus" aria-label={`Hapus ${m.asset_name}`} onClick={() => confirmDelete({ id: m.id, name: m.asset_name || 'Layanan #' + m.id })}><Trash2 size={14}/></button>
                     </div>
                   </td>
                 </tr>
@@ -259,6 +282,43 @@ export default function MaintenancePage() {
               <button className="btn" onClick={closeForm} disabled={saving} title="Batal">Batal</button>
               <button className="btn btn-primary min-w-130" onClick={save} disabled={saving} title={editRow?'Simpan Perubahan':'Tambah Layanan'}>
                 {saving?<><Loader2 size={14} className="animate-spin"/> Menyimpan…</>:<><Save size={14}/> {editRow?'Simpan':'Tambah'}</>}
+              </button>
+            </div>
+          </div>
+        </ModalShell>
+      )}
+      {deleteItem && (
+        <ModalShell 
+          title="" 
+          onClose={() => !deleting && setDeleteItem(null)} 
+          size="sm"
+          overlayClassName="modal-top-align"
+          containerClassName="modal-top-content"
+        >
+          <div className="flex flex-col gap-3 text-center items-center py-2">
+            <div className="w-12 h-12 bg-rose-light text-rose rounded-full flex items-center justify-center mb-1">
+              <Trash2 size={24} />
+            </div>
+            <h3 className="text-md font-800 text-text">Hapus Data?</h3>
+            <p className="text-sm text-text-2">
+              Anda yakin ingin menghapus <b>{deleteItem.name}</b>?
+            </p>
+            <div className="flex gap-3 w-full mt-2">
+              <button 
+                type="button" 
+                className="btn flex-1 justify-center py-2" 
+                onClick={() => setDeleteItem(null)}
+                disabled={deleting}
+              >
+                Batal
+              </button>
+              <button 
+                type="button" 
+                className="btn bg-rose text-white border-none flex-1 justify-center py-2 hover:opacity-90" 
+                onClick={executeDelete}
+                disabled={deleting}
+              >
+                {deleting ? <><Loader2 size={16} className="animate-spin" /> ...</> : 'Ya, Hapus'}
               </button>
             </div>
           </div>

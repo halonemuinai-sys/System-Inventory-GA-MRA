@@ -20,24 +20,28 @@ export function Badge({ label, colorClass = 'badge-slate' }: { label: string; co
 }
 
 // ── Modal container ───────────────────────────────────────────
-export function ModalShell({ onClose, title, children, size = 'md' }: {
+export function ModalShell({ onClose, title, children, size = 'md', overlayClassName = '', containerClassName = '' }: {
   onClose: () => void; title: string; children: React.ReactNode; size?: 'sm' | 'md' | 'lg' | 'xl';
+  overlayClassName?: string;
+  containerClassName?: string;
 }) {
   return (
-    <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className={`modal-container modal-${size}`}>
-        <div className="modal-header">
-          <span className="modal-title">{title}</span>
-          <button 
-            type="button"
-            onClick={onClose} 
-            className="btn-icon" 
-            title="Tutup"
-            aria-label="Tutup modal"
-          >
-            <X size={15} />
-          </button>
-        </div>
+    <div className={`modal-overlay ${overlayClassName}`} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className={`modal-container modal-${size} ${containerClassName}`}>
+        {title && (
+          <div className="modal-header">
+            <span className="modal-title">{title}</span>
+            <button 
+              type="button"
+              onClick={onClose} 
+              className="btn-icon" 
+              title="Tutup"
+              aria-label="Tutup modal"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        )}
         <div className="modal-body">{children}</div>
       </div>
     </div>

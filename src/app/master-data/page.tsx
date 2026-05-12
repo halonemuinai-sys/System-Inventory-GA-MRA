@@ -22,6 +22,9 @@ export default function MasterDataConfig() {
   const [formName, setFormName] = useState('');
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  
+  const [deleteItem, setDeleteItem] = useState<any>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const loadData = async (table: string) => {
     setLoading(true);
@@ -90,19 +93,26 @@ export default function MasterDataConfig() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus data ini?')) return;
-    
+  const confirmDelete = (item: any) => {
+    setDeleteItem(item);
+  };
+
+  const executeDelete = async () => {
+    if (!deleteItem) return;
+    setDeleting(true);
     try {
-      const res = await fetch(`/api/master-data?table=${activeTable}&id=${id}`, {
+      const res = await fetch(`/api/master-data?table=${activeTable}&id=${deleteItem.id}`, {
         method: 'DELETE'
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Gagal menghapus data');
       
+      setDeleteItem(null);
       loadData(activeTable);
     } catch (err: any) {
       alert(err.message);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -184,7 +194,7 @@ export default function MasterDataConfig() {
                         </button>
                         <button 
                           className="btn-icon text-rose hover:bg-rose hover:text-white border-rose-200" 
-                          onClick={() => handleDelete(item.id)}
+                          onClick={() => confirmDelete(item)}
                           title="Hapus"
                         >
                           <Trash2 size={14} />
@@ -220,6 +230,44 @@ export default function MasterDataConfig() {
               </button>
             </div>
           </form>
+        </ModalShell>
+      )}
+
+      {deleteItem && (
+        <ModalShell 
+          title="" 
+          onClose={() => !deleting && setDeleteItem(null)} 
+          size="sm"
+          overlayClassName="modal-top-align"
+          containerClassName="modal-top-content"
+        >
+          <div className="flex flex-col gap-3 text-center items-center py-2">
+            <div className="w-12 h-12 bg-rose-light text-rose rounded-full flex items-center justify-center mb-1">
+              <Trash2 size={24} />
+            </div>
+            <h3 className="text-md font-800 text-text">Hapus Data?</h3>
+            <p className="text-sm text-text-2">
+              Anda yakin ingin menghapus <b>{deleteItem.name}</b>?
+            </p>
+            <div className="flex gap-3 w-full mt-2">
+              <button 
+                type="button" 
+                className="btn flex-1 justify-center py-2" 
+                onClick={() => setDeleteItem(null)}
+                disabled={deleting}
+              >
+                Batal
+              </button>
+              <button 
+                type="button" 
+                className="btn bg-rose text-white border-none flex-1 justify-center py-2 hover:opacity-90" 
+                onClick={executeDelete}
+                disabled={deleting}
+              >
+                {deleting ? <><Loader2 size={16} className="animate-spin" /> ...</> : 'Ya, Hapus'}
+              </button>
+            </div>
+          </div>
         </ModalShell>
       )}
     </div>

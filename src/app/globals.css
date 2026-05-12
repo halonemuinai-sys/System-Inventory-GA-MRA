@@ -348,6 +348,7 @@ body {
   backdrop-filter: blur(4px);
   display: flex; align-items: center; justify-content: center; padding: 1rem;
 }
+.modal-top-align { align-items: flex-start !important; padding-top: 5vh !important; }
 
 .modal-container {
   background: var(--surface); border: 1px solid var(--border);
@@ -360,6 +361,7 @@ body {
 .modal-md { max-width: 680px; }
 .modal-lg { max-width: 900px; }
 .modal-xl { max-width: 1200px; }
+.modal-top-content { animation: slideDown 0.3s ease-out !important; border-top: 3px solid var(--rose) !important; }
 
 .modal-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -1374,10 +1376,22 @@ html.dark .sp-input:focus { border-color:#6366f1 !important; box-shadow:0 0 0 3p
 .bg-blue\/10      { background: rgba(37,99,235,0.1); }
 .blur-3xl         { filter: blur(64px); }
 
-/* ── Hover effects (applied via CSS, Tailwind variant) ──────── */
-.hover\:shadow-hover:hover      { box-shadow: 0 10px 25px rgba(15,23,42,0.1); }
-.hover\:shadow-hero-hover:hover { box-shadow: 0 20px 60px rgba(15,23,42,0.35); }
-.hover\:-translate-y-1:hover   { transform: translateY(-0.25rem); }
-.hover\:shadow-hover:hover,
-.hover\:shadow-hero-hover:hover,
-.hover\:-translate-y-1:hover   { will-change: transform, box-shadow; }
+/* ── Animations ──────────────────────────────────────────────── */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.animate-slide-up { animation: slideUp 0.3s ease-out both; }
+.animate-slide-down { animation: slideDown 0.3s ease-out both; }
+.animate-fade-in { animation: fadeIn 0.3s ease-out both; }
