@@ -318,7 +318,7 @@ export default function Home() {
           <p className="text-xs text-text-3 font-600 mb-3 relative z-1">IDR {fmt(data.rentals.value)}</p>
           
           <div className="spark-container mt-auto">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
               <AreaChart data={sparkline} margin={{ top:0,right:0,bottom:0,left:0 }}>
                 <defs>
                   <linearGradient id="indGrad" x1="0" y1="0" x2="0" y2="1">
@@ -389,7 +389,7 @@ export default function Home() {
         {/* Vehicle donut + vendor bar */}
         <div className="bg-surface border border-border border-t-3 border-t-emerald rounded-2xl px-5 py-3 shadow-premium flex-start gap-4">
           <div className="relative w-22.5 h-22.5 shrink-0">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
               <PieChart>
                 <Pie data={vehData.length?vehData:[{name:'–',value:1,color:'#e2e8f0'}]}
                   innerRadius={28} outerRadius={43} paddingAngle={3} dataKey="value" strokeWidth={0}>
@@ -409,7 +409,7 @@ export default function Home() {
           <div className="w-40 shrink-0">
             <p className="text-xxs-bold text-text-3 uppercase letter-wide mb-1">Vendor Status</p>
             <div className="h-20">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                 <BarChart layout="vertical" data={[{ name:'Total', value:data.vendors.total },{ name:'Active', value:data.vendors.active },{ name:'Inactive', value:data.vendors.inactive }]} margin={{ top:0,right:22,bottom:0,left:0 }}>
                   <XAxis type="number" tick={{ fontSize:8, fill:'#94a3b8' }} axisLine={false} tickLine={false}/>
                   <YAxis type="category" dataKey="name" tick={{ fontSize:9, fill:'#64748b' }} axisLine={false} tickLine={false} width={48}/>
@@ -447,7 +447,7 @@ export default function Home() {
         <SCard title="Asset Condition">
           {data.assetCondition.length > 0 ? (
             <div className="h-52">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                 <PieChart>
                   <Pie data={data.assetCondition} cx="50%" cy="46%"
                     innerRadius={52} outerRadius={76} paddingAngle={3}
@@ -490,7 +490,7 @@ export default function Home() {
           </div>
           {/* Sparkline */}
           <div className="h-13 mt-3">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
               <AreaChart data={sparkline} margin={{ top:0,right:0,bottom:0,left:0 }}>
                 <defs>
                   <linearGradient id="blGrad" x1="0" y1="0" x2="0" y2="1">
@@ -522,7 +522,7 @@ export default function Home() {
         <SCard title="Unit Distribution by Vendor">
           {data.rentalByVendor.length > 0 ? (
             <div className="h-52">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                 <BarChart data={data.rentalByVendor} margin={{ top:5,right:5,bottom:70,left:0 }}>
                   <defs>
                     <linearGradient id="bBlue" x1="0" y1="0" x2="0" y2="1">
@@ -553,7 +553,7 @@ export default function Home() {
 
         <SCard title="Vendor Distribution">
           <div className="h-32">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
               <PieChart>
                 <Pie data={data.rentalByVendor} cx="50%" cy="50%"
                   innerRadius={34} outerRadius={56} paddingAngle={3}
@@ -611,7 +611,7 @@ export default function Home() {
 
         <SCard title="Insurer Distribution">
           <div className="h-30">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
               <PieChart>
                 <Pie data={data.insurance.byVendor} cx="50%" cy="50%"
                   innerRadius={28} outerRadius={50} paddingAngle={3}
