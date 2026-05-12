@@ -9,6 +9,7 @@ export async function GET(request: Request) {
     const search   = searchParams.get('search')   || '';
     const catId    = searchParams.get('category') || '';
     const statusId = searchParams.get('status')   || '';
+    const compId   = searchParams.get('company')  || '';
     const offset   = (page - 1) * limit;
 
     const conditions: string[] = [];
@@ -28,6 +29,11 @@ export async function GET(request: Request) {
     if (statusId) {
       conditions.push(`a.status_id = $${idx}`);
       params.push(parseInt(statusId));
+      idx++;
+    }
+    if (compId) {
+      conditions.push(`a.company_id = $${idx}`);
+      params.push(parseInt(compId));
       idx++;
     }
 

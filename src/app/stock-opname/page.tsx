@@ -30,6 +30,18 @@ interface CheckDetail {
   check_status: string;
 }
 
+function ProgressBar({ progress, colorClass = 'bg-blue' }: { progress: number; colorClass?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.style.width = `${progress}%`;
+  }, [progress]);
+  return (
+    <div className="w-full h-full bg-border rounded-full overflow-hidden">
+      <div ref={ref} className={`h-full rounded-full transition-all ${colorClass}`} />
+    </div>
+  );
+}
+
 export default function StockOpnamePage() {
   const [sessions, setSessions]       = useState<Session[]>([]);
   const [loading, setLoading]         = useState(true);
@@ -190,11 +202,8 @@ export default function StockOpnamePage() {
               {activeSession.total_assets ? Math.round((activeSession.checked_count / activeSession.total_assets) * 100) : 0}%
             </span>
           </div>
-          <div className="w-full h-2 bg-border rounded-full overflow-hidden">
-            <div
-              className="h-full bg-blue rounded-full transition-all"
-              style={{ width: `${activeSession.total_assets ? (activeSession.checked_count / activeSession.total_assets) * 100 : 0}%` }}
-            />
+          <div className="w-full h-2">
+            <ProgressBar progress={activeSession.total_assets ? (activeSession.checked_count / activeSession.total_assets) * 100 : 0} />
           </div>
         </div>
 
@@ -322,10 +331,10 @@ export default function StockOpnamePage() {
                   <td className="td-p text-right">
                     <div className="flex-between gap-3 justify-end">
                       <span className="text-xs font-700 text-text whitespace-nowrap">{s.checked_count} / {s.total_assets}</span>
-                      <div className="w-20 h-1.5 bg-border rounded-full overflow-hidden shrink-0">
-                        <div
-                          className={`h-full rounded-full ${s.status === 'Completed' ? 'bg-emerald' : 'bg-blue'}`}
-                          style={{ width: `${pct}%` }}
+                      <div className="w-20 h-1.5 shrink-0">
+                        <ProgressBar 
+                          progress={pct} 
+                          colorClass={s.status === 'Completed' ? 'bg-emerald' : 'bg-blue'} 
                         />
                       </div>
                       <span className="text-xxs font-800 text-text-3 w-7 text-right">{pct}%</span>

@@ -25,9 +25,13 @@ export default function RentalsPage() {
   const [total, setTotal]           = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [page, setPage]             = useState(1);
-  const [loading, setLoading]       = useState(true);
+  const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState<string|null>(null);
   const [search, setSearch]         = useState('');
+  const [compFilter, setComp]       = useState('');
+  const [appliedFilters, setApplied] = useState({ search: '', comp: '' });
+  const [hasSearched, setHasSearched] = useState(false);
+  const [kpi, setKpi]               = useState({ total_items: 0, total_price: 0 });
   const [meta, setMeta]             = useState<{companies:any[];vendors:any[]}>({companies:[],vendors:[]});
   const [detail, setDetail]         = useState<any>(null);
   const [dlLoading, setDlLoading]   = useState(false);
@@ -48,17 +52,46 @@ export default function RentalsPage() {
     ]).then(([am, vm]) => setMeta({ companies: am.companies||[], vendors: vm.data||[] })).catch(()=>{});
   }, []);
 
-  const load = useCallback(async (p: number) => {
+  const load = useCallback(async (p: number, filters = appliedFilters) => {
     setLoading(true); setError(null);
     try {
-      const qs = new URLSearchParams({ page:String(p), limit:String(LIMIT), ...(search&&{search}) });
+      const qs = new URLSearchParams({ 
+        page:String(p), limit:String(LIMIT), 
+        ...(filters.search && { search: filters.search }),
+        ...(filters.comp && { company: filters.comp })
+      });
       const res = await fetch(`/api/rentals?${qs}`);
       const j = await res.json();
       setRows(j.data); setTotal(j.total); setTotalPages(j.totalPages); setPage(j.page);
+      setHasSearched(true);
     } catch(e:any) { setError(e.message); } finally { setLoading(false); }
-  }, [search]);
+  }, [appliedFilters]);
 
-  useEffect(() => { load(1); }, [load]);
+  const fetchKpi = useCallback(async (filters = appliedFilters) => {
+    try {
+      const qs = new URLSearchParams(filters.comp ? { company: filters.comp } : {});
+      const res = await fetch(`/api/rentals/summary?${qs}`);
+      const data = await res.json();
+      setKpi(data);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [appliedFilters]);
+
+  const handleSearch = () => {
+    const filters = { search, comp: compFilter };
+    setApplied(filters);
+    load(1, filters);
+    fetchKpi(filters);
+  };
+
+  useEffect(() => {
+    fetchKpi({ search: '', comp: '' });
+  }, []);
+
+  useEffect(() => {
+    if (hasSearched) load(page, appliedFilters);
+  }, [page]);
 
   const confirmDelete = (item: { id: number; name: string }) => {
     setDeleteItem(item);
@@ -97,7 +130,8 @@ export default function RentalsPage() {
       const url = editRow ? `/api/rentals/${editRow.id}` : '/api/rentals';
       const res = await fetch(url, { method:editRow?'PUT':'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ...form, company_id:parseInt(form.company_id)||null, vendor_id:parseInt(form.vendor_id)||null, price:parseNum(form.price), duration_months:parseInt(form.duration_months)||null }) });
       if (!res.ok) { const e=await res.json(); throw new Error(e.error||'Gagal menyimpan'); }
-      closeForm(); load(page);
+      closeForm(); 
+      if (hasSearched) load(page, appliedFilters);
     } catch(e:any) { setFormErr(e.message); } finally { setSaving(false); }
   };
 
@@ -110,6 +144,18 @@ export default function RentalsPage() {
         <button className="btn btn-primary" onClick={openAdd} title="Tambah Rental Baru"><Plus size={16}/> Tambah Rental</button>
       </div>
 
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="card">
+          <p className="text-xxs-bold text-text-3 uppercase letter-wide mb-1">Total Keseluruhan Rental</p>
+          <p className="text-2xl font-900 text-text">{fmt(kpi.total_items)} item</p>
+        </div>
+        <div className="card">
+          <p className="text-xxs-bold text-text-3 uppercase letter-wide mb-1">Total Biaya Rental</p>
+          <p className="text-2xl font-900 text-blue">Rp {fmt(kpi.total_price)} / bulan</p>
+        </div>
+      </div>
+
       <div className="filter-bar">
         <div className="search-box">
           <Search size={15} className="search-icon" />
@@ -118,17 +164,36 @@ export default function RentalsPage() {
             type="text" 
             placeholder="Cari item, order ID, vendor..." 
             value={search} 
-            onChange={e=>{setSearch(e.target.value);setPage(1);}} 
+            onChange={e => setSearch(e.target.value)} 
+            onKeyDown={e => e.key === 'Enter' && handleSearch()}
             className="input-premium w-full pl-9" 
             title="Cari Rental" 
             aria-label="Cari data penyewaan perangkat"
           />
         </div>
-        <div className="summary-item">
-          <span className="text-text-3">Total: </span><span className="font-800 text-text">{fmt(total)} item</span>
-        </div>
-        <div className="summary-item-blue">
-          <span className="text-blue font-600">Halaman ini: </span><span className="font-800 text-blue">Rp {fmt(totalVal)}</span>
+        
+        <select 
+          id="rnt_comp_filter"
+          value={compFilter} 
+          onChange={e => setComp(e.target.value)}
+          className="input-premium w-auto max-w-[150px]" 
+          title="Filter Perusahaan"
+        >
+          <option value="">Semua Perusahaan</option>
+          {meta.companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+
+        <button className="btn btn-primary" onClick={handleSearch} title="Terapkan Filter">
+          Cari Data
+        </button>
+
+        <div className="summary-box">
+          <div className="summary-item">
+            <span className="text-text-3">Total: </span><span className="font-800 text-text">{fmt(total)} item</span>
+          </div>
+          <div className="summary-item-blue">
+            <span className="text-blue font-600">Halaman ini: </span><span className="font-800 text-blue">Rp {fmt(totalVal)}</span>
+          </div>
         </div>
       </div>
 
@@ -144,7 +209,17 @@ export default function RentalsPage() {
             {rows.length===0 ? (
               <tr><td colSpan={8} className="py-14 text-center">
                 <HardDrive size={36} className="text-text-3 mx-auto mb-3 block" />
-                <p className="text-sm-bold text-text-2">Tidak ada data rental ditemukan</p>
+                {hasSearched ? (
+                  <>
+                    <p className="text-sm-bold text-text-2">Tidak ada data rental ditemukan</p>
+                    <p className="text-xs-muted mt-1">Coba ubah filter dan klik Cari Data</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm-bold text-text-2">Menunggu pencarian data</p>
+                    <p className="text-xs-muted mt-1">Silakan gunakan filter di atas dan klik Cari Data</p>
+                  </>
+                )}
               </td></tr>
             ) : rows.map((r,i) => {
               const expired = r.end_rent && new Date(r.end_rent) < new Date();

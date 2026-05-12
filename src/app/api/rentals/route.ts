@@ -7,6 +7,7 @@ export async function GET(request: Request) {
     const page   = Math.max(1, parseInt(searchParams.get('page')  || '1'));
     const limit  = Math.min(100, Math.max(5, parseInt(searchParams.get('limit') || '20')));
     const search = searchParams.get('search') || '';
+    const compId = searchParams.get('company') || '';
     const offset = (page - 1) * limit;
 
     const conds: string[] = [];
@@ -16,6 +17,10 @@ export async function GET(request: Request) {
     if (search) {
       conds.push(`(r.item_name ILIKE $${idx} OR r.order_id ILIKE $${idx} OR v.vendor_name ILIKE $${idx} OR r.device_type ILIKE $${idx})`);
       params.push(`%${search}%`); idx++;
+    }
+    if (compId) {
+      conds.push(`r.company_id = $${idx}`);
+      params.push(parseInt(compId)); idx++;
     }
 
     const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';

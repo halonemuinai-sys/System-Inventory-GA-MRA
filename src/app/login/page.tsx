@@ -25,14 +25,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div 
-      className="min-h-screen flex items-center justify-center relative overflow-hidden"
-      style={{ 
-        backgroundImage: "url('/bg-ga-mra.webp')", 
-        backgroundSize: 'cover', 
-        backgroundPosition: 'center' 
-      }}
-    >
+    <div className="login-container min-h-screen flex items-center justify-center relative overflow-hidden">
       {/* Dark Overlay (without blur) so the background image stays sharp */}
       <div className="absolute inset-0 bg-slate-950/50" />
 

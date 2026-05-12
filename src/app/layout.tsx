@@ -179,7 +179,7 @@ function Shell({ children }: { children: React.ReactNode }) {
 
       {/* MAIN */}
       <div className={`main-content ${isCollapsed ? 'collapsed' : ''}`}>
-        <nav className="navbar" style={{ justifyContent: 'space-between' }}>
+        <nav className="navbar">
           <div className="flex items-center gap-4">
             <button 
               className="lg:hidden p-1.5 -ml-2 text-text-2 hover:bg-surface-2 rounded-md"

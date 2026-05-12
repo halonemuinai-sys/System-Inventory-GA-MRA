@@ -4,9 +4,10 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import JsBarcode from 'jsbarcode';
 import QRCode from 'qrcode';
 import {
-  Printer, Download, RefreshCw, QrCode, Barcode,
-  Palette, Settings2, Copy, Check, Plus, Trash2, Package,
+  Printer, Download, QrCode, Barcode,
+  Palette, Copy, Check, Plus, Trash2, Package,
 } from 'lucide-react';
+import './barcode.css';
 
 // ── Types ────────────────────────────────────────────────────
 type BarcodeFormat = 'CODE128' | 'CODE39' | 'EAN13' | 'EAN8' | 'UPC' | 'ITF14';
@@ -45,11 +46,11 @@ const FORMAT_OPTIONS: { value: BarcodeFormat; label: string; example: string }[]
 ];
 
 const PRESETS = [
-  { bg: '#ffffff', line: '#000000', label: 'Hitam & Putih' },
-  { bg: '#0f172a', line: '#60a5fa', label: 'Dark Blue' },
-  { bg: '#f0fdf4', line: '#15803d', label: 'Hijau' },
-  { bg: '#fff7ed', line: '#c2410c', label: 'Oranye' },
-  { bg: '#fdf4ff', line: '#7e22ce', label: 'Ungu' },
+  { bg: '#ffffff', line: '#000000', label: 'Hitam & Putih', id: 'bw' },
+  { bg: '#0f172a', line: '#60a5fa', label: 'Dark Blue', id: 'dark-blue' },
+  { bg: '#f0fdf4', line: '#15803d', label: 'Hijau', id: 'green' },
+  { bg: '#fff7ed', line: '#c2410c', label: 'Oranye', id: 'orange' },
+  { bg: '#fdf4ff', line: '#7e22ce', label: 'Ungu', id: 'purple' },
 ];
 
 const defaultConfig: BarcodeConfig = {
@@ -108,11 +109,11 @@ function BarcodePreview({ item, config }: { item: BarcodeItem; config: BarcodeCo
   }, [item, config]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem' }}>
+    <div className="barcode-preview-item">
       {item.type === 'barcode'
-        ? <svg ref={svgRef} style={{ maxWidth: '100%' }} />
-        : <canvas ref={canvRef} style={{ borderRadius: 8 }} />}
-      {err && <span style={{ fontSize: '0.7rem', color: 'var(--rose)' }}>{err}</span>}
+        ? <svg ref={svgRef} />
+        : <canvas ref={canvRef} />}
+      {err && <span className="barcode-error-text">{err}</span>}
     </div>
   );
 }
@@ -121,8 +122,13 @@ function BarcodePreview({ item, config }: { item: BarcodeItem; config: BarcodeCo
 function PrintCard({ item, config }: { item: BarcodeItem; config: BarcodeConfig }) {
   const svgRef  = useRef<SVGSVGElement>(null);
   const canvRef = useRef<HTMLCanvasElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const lblRef  = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
+    if (cardRef.current) cardRef.current.style.background = config.background;
+    if (lblRef.current)  lblRef.current.style.color = config.lineColor;
+
     if (item.type === 'barcode' && svgRef.current) {
       try {
         JsBarcode(svgRef.current, item.text || ' ', {
@@ -143,16 +149,12 @@ function PrintCard({ item, config }: { item: BarcodeItem; config: BarcodeConfig 
   }, [item, config]);
 
   return (
-    <div className="print-card" style={{
-      display: 'inline-flex', flexDirection: 'column', alignItems: 'center',
-      padding: '12px', border: '1px solid #e2e8f0', borderRadius: 8,
-      background: config.background, gap: 6, pageBreakInside: 'avoid',
-    }}>
+    <div ref={cardRef} className="barcode-print-card">
       {item.type === 'barcode'
         ? <svg ref={svgRef} />
         : <canvas ref={canvRef} />}
       {item.label && (
-        <span style={{ fontSize: 10, fontWeight: 700, color: config.lineColor, textAlign: 'center', maxWidth: 180 }}>
+        <span ref={lblRef} className="barcode-print-label">
           {item.label}
         </span>
       )}
@@ -241,12 +243,14 @@ export default function BarcodePage() {
   const printAll = () => {
     const w = window.open('', '_blank', 'width=800,height=600');
     if (!w) return;
-    const cards = document.querySelectorAll('.print-card');
+    const cards = document.querySelectorAll('.barcode-print-card');
     w.document.write(`
       <html><head><title>Barcode Print</title>
       <style>
         body { font-family: sans-serif; padding: 16px; }
         .wrap { display: flex; flex-wrap: wrap; gap: 16px; }
+        .barcode-print-card { display: inline-flex; flex-direction: column; align-items: center; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; gap: 6px; page-break-inside: avoid; }
+        .barcode-print-label { font-size: 10px; font-weight: 700; text-align: center; max-width: 180px; }
         @media print { @page { margin: 10mm; } }
       </style></head>
       <body><div class="wrap">
@@ -271,46 +275,38 @@ export default function BarcodePage() {
     return matchSearch && matchCompany && matchCategory;
   });
 
-  // ─────────────────────────────────────────────────────────────
-  const iStyle2: React.CSSProperties = {
-    width: '100%', padding: '0.45rem 0.75rem',
-    background: 'var(--surface-2)', border: '1px solid var(--border)',
-    borderRadius: 8, color: 'var(--text)', fontSize: '0.8rem', outline: 'none',
-  };
-
   return (
-    <div className="container" style={{ paddingBottom: '3rem', maxWidth: 1400 }}>
+    <div className="container pb-12">
 
       {/* ── Header ──────────────────────────────────────────── */}
-      <div style={{ marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
-          <div style={{ width: 32, height: 32, background: 'var(--blue)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="mb-6">
+        <div className="barcode-page-header">
+          <div className="w-8 h-8 bg-blue rounded-lg flex-center">
             <Barcode size={16} color="#fff" />
           </div>
-          <h1 style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--text)', letterSpacing: '-0.02em' }}>
+          <h1 className="barcode-page-title">
             Barcode Generator
           </h1>
         </div>
-        <p style={{ fontSize: '0.8rem', color: 'var(--text-3)', marginLeft: 44 }}>
+        <p className="barcode-page-subtitle">
           Generate & cetak barcode / QR Code untuk aset, dokumen, dan label kustom
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '1.25rem', alignItems: 'start' }}>
+      <div className="barcode-container">
 
         {/* ══ LEFT PANEL ═══════════════════════════════════════ */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div className="barcode-left-panel">
 
           {/* Tab switcher */}
-          <div style={{ display: 'flex', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 12, padding: 4, gap: 2 }}>
+          <div className="barcode-tab-switcher">
             {(['design','bulk','assets'] as const).map(t => (
-              <button key={t} type="button" onClick={() => setTab(t)} style={{
-                flex: 1, padding: '0.42rem', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700,
-                background: tab === t ? 'var(--surface)' : 'transparent',
-                color: tab === t ? 'var(--text)' : 'var(--text-3)',
-                boxShadow: tab === t ? '0 1px 4px rgba(15,23,42,0.08)' : 'none',
-                transition: 'all 0.18s',
-              }}>
+              <button 
+                key={t} 
+                type="button" 
+                onClick={() => setTab(t)} 
+                className={`barcode-tab-btn ${tab === t ? 'active' : ''}`}
+              >
                 {t === 'design' ? 'Desain' : t === 'bulk' ? 'Bulk' : 'Aset'}
               </button>
             ))}
@@ -318,20 +314,21 @@ export default function BarcodePage() {
 
           {/* ── DESIGN TAB ── */}
           {tab === 'design' && (
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '1.1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="barcode-panel-card">
 
               {/* Output type */}
               <div>
-                <p style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.5rem' }}>Tipe Output</p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                <p className="barcode-setting-label-text mb-2">Tipe Output</p>
+                <div className="grid grid-cols-2 gap-2">
                   {(['barcode','qr'] as const).map(t => (
-                    <button key={t} type="button" onClick={() => { cfg('type', t); updateItem(activeId, { type: t }); }} style={{
-                      padding: '0.55rem', borderRadius: 10, border: `2px solid ${config.type === t ? 'var(--blue)' : 'var(--border)'}`,
-                      background: config.type === t ? 'var(--blue-light)' : 'var(--surface-2)',
-                      color: config.type === t ? 'var(--blue)' : 'var(--text-2)',
-                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                      fontWeight: 700, fontSize: '0.78rem', transition: 'all 0.18s',
-                    }}>
+                    <button 
+                      key={t} 
+                      type="button" 
+                      onClick={() => { cfg('type', t); updateItem(activeId, { type: t }); }} 
+                      className={`flex-center gap-2 py-2.5 rounded-xl border-2 transition-all font-700 text-sm ${
+                        config.type === t ? 'bg-blue-light border-blue text-blue' : 'bg-surface-2 border-border text-text-2'
+                      }`}
+                    >
                       {t === 'barcode' ? <Barcode size={14}/> : <QrCode size={14}/>}
                       {t === 'barcode' ? 'Barcode' : 'QR Code'}
                     </button>
@@ -340,32 +337,38 @@ export default function BarcodePage() {
               </div>
 
               {/* Content */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-                <p style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Konten</p>
-                <label style={{ fontSize: '0.68rem', color: 'var(--text-3)' }}>Teks / Kode</label>
-                <input style={iStyle2} value={activeItem.text} title="Teks Barcode"
-                  onChange={e => updateItem(activeId, { text: e.target.value })}
-                  placeholder="Masukkan kode atau teks…" />
-                <label style={{ fontSize: '0.68rem', color: 'var(--text-3)' }}>Label (teks di bawah)</label>
-                <input style={iStyle2} value={activeItem.label} title="Label Barcode"
-                  onChange={e => updateItem(activeId, { label: e.target.value })}
-                  placeholder="Label opsional…" />
+              <div className="barcode-setting-group">
+                <p className="barcode-setting-label-text">Konten</p>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xxs-bold text-text-3 uppercase letter-wide">Teks / Kode</label>
+                  <input className="input-premium" value={activeItem.text} title="Teks Barcode"
+                    onChange={e => updateItem(activeId, { text: e.target.value })}
+                    placeholder="Masukkan kode atau teks…" />
+                </div>
+                <div className="flex flex-col gap-1.5 mt-2">
+                  <label className="text-xxs-bold text-text-3 uppercase letter-wide">Label (teks di bawah)</label>
+                  <input className="input-premium" value={activeItem.label} title="Label Barcode"
+                    onChange={e => updateItem(activeId, { label: e.target.value })}
+                    placeholder="Label opsional…" />
+                </div>
               </div>
 
               {/* Format (barcode only) */}
               {config.type === 'barcode' && (
                 <div>
-                  <p style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.5rem' }}>Format Barcode</p>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
+                  <p className="barcode-setting-label-text mb-2">Format Barcode</p>
+                  <div className="grid grid-cols-2 gap-1.5">
                     {FORMAT_OPTIONS.map(f => (
-                      <button key={f.value} type="button" onClick={() => { cfg('format', f.value); updateItem(activeId, { format: f.value }); }} style={{
-                        padding: '0.42rem 0.6rem', borderRadius: 8, border: `1.5px solid ${activeItem.format === f.value ? 'var(--blue)' : 'var(--border)'}`,
-                        background: activeItem.format === f.value ? 'var(--blue-light)' : 'var(--surface-2)',
-                        color: activeItem.format === f.value ? 'var(--blue)' : 'var(--text-2)',
-                        fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', transition: 'all 0.18s', textAlign: 'left',
-                      }}>
-                        {f.label}
-                        <span style={{ display: 'block', fontSize: '0.58rem', opacity: 0.6, fontWeight: 400, marginTop: 1 }}>{f.example}</span>
+                      <button 
+                        key={f.value} 
+                        type="button" 
+                        onClick={() => { cfg('format', f.value); updateItem(activeId, { format: f.value }); }} 
+                        className={`p-2 rounded-lg border-1.5 text-left transition-all ${
+                          activeItem.format === f.value ? 'bg-blue-light border-blue text-blue' : 'bg-surface-2 border-border text-text-2'
+                        }`}
+                      >
+                        <span className="block text-xs-bold">{f.label}</span>
+                        <span className="block text-xxxs opacity-60 font-500 mt-0.5">{f.example}</span>
                       </button>
                     ))}
                   </div>
@@ -374,90 +377,109 @@ export default function BarcodePage() {
 
               {/* Barcode settings */}
               {config.type === 'barcode' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                  <p style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Ukuran</p>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <div className="barcode-setting-group">
+                  <p className="barcode-setting-label-text">Ukuran</p>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-2">
                     <div>
-                      <label style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>Lebar garis: {config.width}px</label>
+                      <div className="barcode-setting-label">
+                        <span className="text-xxs-bold text-text-3">Lebar</span>
+                        <span className="barcode-setting-value">{config.width}px</span>
+                      </div>
                       <input type="range" min={1} max={5} step={0.5} value={config.width} title="Lebar Garis"
                         onChange={e => cfg('width', parseFloat(e.target.value))}
-                        style={{ width: '100%', accentColor: 'var(--blue)' }} />
+                        className="w-full accent-blue mt-1" />
                     </div>
                     <div>
-                      <label style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>Tinggi: {config.height}px</label>
+                      <div className="barcode-setting-label">
+                        <span className="text-xxs-bold text-text-3">Tinggi</span>
+                        <span className="barcode-setting-value">{config.height}px</span>
+                      </div>
                       <input type="range" min={40} max={160} step={5} value={config.height} title="Tinggi Barcode"
                         onChange={e => cfg('height', parseInt(e.target.value))}
-                        style={{ width: '100%', accentColor: 'var(--blue)' }} />
+                        className="w-full accent-blue mt-1" />
                     </div>
                     <div>
-                      <label style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>Font: {config.fontSize}px</label>
+                      <div className="barcode-setting-label">
+                        <span className="text-xxs-bold text-text-3">Font</span>
+                        <span className="barcode-setting-value">{config.fontSize}px</span>
+                      </div>
                       <input type="range" min={8} max={24} step={1} value={config.fontSize} title="Ukuran Font"
                         onChange={e => cfg('fontSize', parseInt(e.target.value))}
-                        style={{ width: '100%', accentColor: 'var(--blue)' }} />
+                        className="w-full accent-blue mt-1" />
                     </div>
                     <div>
-                      <label style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>Margin: {config.margin}px</label>
-                      <input type="range" min={0} max={30} step={2} value={config.margin} title="Margin"
+                      <div className="barcode-setting-label">
+                        <span className="text-xxs-bold text-text-3">Margin</span>
+                        <span className="barcode-setting-value">{config.margin}px</span>
+                      </div>
+                      <input type="range" min={0} max={40} step={2} value={config.margin} title="Margin"
                         onChange={e => cfg('margin', parseInt(e.target.value))}
-                        style={{ width: '100%', accentColor: 'var(--blue)' }} />
+                        className="w-full accent-blue mt-1" />
                     </div>
                   </div>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.78rem', cursor: 'pointer', color: 'var(--text-2)' }}>
-                    <input type="checkbox" checked={config.showText} onChange={e => cfg('showText', e.target.checked)} style={{ accentColor: 'var(--blue)', width: 'auto' }} />
-                    Tampilkan teks di bawah barcode
+                  <label className="flex-start gap-2 mt-2 cursor-pointer group">
+                    <input type="checkbox" checked={config.showText} onChange={e => cfg('showText', e.target.checked)} className="w-4 h-4 accent-blue" />
+                    <span className="text-xs font-600 text-text-2 group-hover:text-text transition-colors">Tampilkan teks label</span>
                   </label>
                 </div>
               )}
 
               {/* QR settings */}
               {config.type === 'qr' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                  <p style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>QR Settings</p>
-                  <label style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>Ukuran: {config.qrSize}px</label>
-                  <input type="range" min={100} max={400} step={20} value={config.qrSize} title="Ukuran QR Code"
-                    onChange={e => cfg('qrSize', parseInt(e.target.value))}
-                    style={{ width: '100%', accentColor: 'var(--blue)' }} />
-                  <label style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>Error correction</label>
-                  <select style={iStyle2} value={config.qrErrorLevel} onChange={e => cfg('qrErrorLevel', e.target.value as any)} title="QR Error Correction Level">
-                    <option value="L">L — Low (7%)</option>
-                    <option value="M">M — Medium (15%)</option>
-                    <option value="Q">Q — Quartile (25%)</option>
-                    <option value="H">H — High (30%)</option>
-                  </select>
+                <div className="barcode-setting-group">
+                  <p className="barcode-setting-label-text">QR Settings</p>
+                  <div>
+                    <div className="barcode-setting-label">
+                      <span className="text-xxs-bold text-text-3">Ukuran</span>
+                      <span className="barcode-setting-value">{config.qrSize}px</span>
+                    </div>
+                    <input type="range" min={100} max={400} step={20} value={config.qrSize} title="Ukuran QR Code"
+                      onChange={e => cfg('qrSize', parseInt(e.target.value))}
+                      className="w-full accent-blue mt-1" />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xxs-bold text-text-3 uppercase letter-wide">Error Correction</label>
+                    <select className="input-premium" value={config.qrErrorLevel} onChange={e => cfg('qrErrorLevel', e.target.value as any)} title="QR Error Correction Level">
+                      <option value="L">L — Low (7%)</option>
+                      <option value="M">M — Medium (15%)</option>
+                      <option value="Q">Q — Quartile (25%)</option>
+                      <option value="H">H — High (30%)</option>
+                    </select>
+                  </div>
                 </div>
               )}
 
               {/* Color presets */}
-              <div>
-                <p style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.5rem' }}>
-                  <Palette size={11} style={{ display: 'inline', marginRight: 4 }} />Warna
+              <div className="barcode-setting-group">
+                <p className="barcode-setting-label-text flex-start gap-1.5">
+                  <Palette size={12}/> Warna
                 </p>
-                <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                <div className="barcode-preset-grid">
                   {PRESETS.map(p => (
-                    <button key={p.label} type="button" title={p.label}
+                    <button 
+                      key={p.label} 
+                      type="button" 
+                      title={p.label}
                       onClick={() => { cfg('background', p.bg); cfg('lineColor', p.line); }}
-                      style={{ width: 28, height: 28, borderRadius: 8, border: '2px solid var(--border)', cursor: 'pointer', background: p.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <div style={{ width: 12, height: 12, background: p.line, borderRadius: 3 }} />
+                      className={`barcode-preset-btn barcode-preset-${p.id} flex-center ${config.background === p.bg && config.lineColor === p.line ? 'active' : ''}`}
+                    >
+                      <div className="w-2.5 h-2.5 rounded-sm" />
                     </button>
                   ))}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  <div>
-                    <label style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>Background</label>
-                    <div style={{ display: 'flex', gap: 6, marginTop: 3 }}>
-                      <input type="color" value={config.background} onChange={e => cfg('background', e.target.value)} title="Warna Background (Picker)"
-                        style={{ width: 36, height: 32, border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', padding: 2, background: 'none' }} />
-                      <input style={{ ...iStyle2, fontFamily: 'monospace', fontSize: '0.72rem' }} title="Warna Background (Hex)"
-                        value={config.background} onChange={e => cfg('background', e.target.value)} />
+                <div className="grid grid-cols-2 gap-3 mt-1">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xxxs-bold text-text-3 uppercase">BG</label>
+                    <div className="flex-start gap-1.5">
+                      <input type="color" value={config.background} onChange={e => cfg('background', e.target.value)} title="BG Picker" className="w-8 h-8 rounded-lg border-none bg-none p-0 cursor-pointer overflow-hidden" />
+                      <input className="input-premium font-mono !text-xxs !py-1 !px-2" value={config.background} onChange={e => cfg('background', e.target.value)} title="BG Hex" />
                     </div>
                   </div>
-                  <div>
-                    <label style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>Warna Garis</label>
-                    <div style={{ display: 'flex', gap: 6, marginTop: 3 }}>
-                      <input type="color" value={config.lineColor} onChange={e => cfg('lineColor', e.target.value)} title="Warna Garis (Picker)"
-                        style={{ width: 36, height: 32, border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', padding: 2, background: 'none' }} />
-                      <input style={{ ...iStyle2, fontFamily: 'monospace', fontSize: '0.72rem' }} title="Warna Garis (Hex)"
-                        value={config.lineColor} onChange={e => cfg('lineColor', e.target.value)} />
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xxxs-bold text-text-3 uppercase">Line</label>
+                    <div className="flex-start gap-1.5">
+                      <input type="color" value={config.lineColor} onChange={e => cfg('lineColor', e.target.value)} title="Line Picker" className="w-8 h-8 rounded-lg border-none bg-none p-0 cursor-pointer overflow-hidden" />
+                      <input className="input-premium font-mono !text-xxs !py-1 !px-2" value={config.lineColor} onChange={e => cfg('lineColor', e.target.value)} title="Line Hex" />
                     </div>
                   </div>
                 </div>
@@ -467,20 +489,22 @@ export default function BarcodePage() {
 
           {/* ── BULK TAB ── */}
           {tab === 'bulk' && (
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '1.1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <p style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Import Massal</p>
-              <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', lineHeight: 1.5 }}>
-                Satu baris = satu barcode.<br/>
-                Format: <code style={{ background: 'var(--surface-2)', padding: '0 4px', borderRadius: 4 }}>KODE[Tab]LABEL</code>
-              </p>
+            <div className="barcode-panel-card">
+              <p className="barcode-setting-label-text">Import Massal</p>
+              <div className="info-card !p-3 !bg-blue-light !border-blue-border/30">
+                <p className="text-xxs text-blue leading-relaxed font-600">
+                  Satu baris = satu barcode.<br/>
+                  Format: <code className="bg-white/40 px-1 rounded">KODE[Tab]LABEL</code>
+                </p>
+              </div>
               <textarea
                 rows={8}
-                style={{ ...iStyle2, fontFamily: 'monospace', fontSize: '0.75rem', resize: 'vertical' }}
+                className="input-premium font-mono text-xs resize-none"
                 placeholder={'MRA-001\tAsset Laptop\nMRA-002\tAsset Monitor\nMRA-003'}
                 value={bulkText}
                 onChange={e => setBulkText(e.target.value)}
               />
-              <button type="button" className="btn btn-primary" onClick={importBulk} style={{ width: '100%', justifyContent: 'center' }}>
+              <button type="button" className="btn btn-primary w-full justify-center" onClick={importBulk}>
                 <Plus size={14} /> Import {bulkText.split('\n').filter(Boolean).length} Item
               </button>
             </div>
@@ -488,45 +512,47 @@ export default function BarcodePage() {
 
           {/* ── ASSETS TAB ── */}
           {tab === 'assets' && (
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '1.1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <p style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Dari Data Aset</p>
+            <div className="barcode-panel-card">
+              <p className="barcode-setting-label-text">Dari Data Aset</p>
               
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <input style={iStyle2} placeholder="Cari kode / nama aset…" title="Cari Aset"
+              <div className="flex flex-col gap-2">
+                <input className="input-premium" placeholder="Cari kode / nama aset…" title="Cari Aset"
                   value={assetSearch} onChange={e => setAssetSearch(e.target.value)} />
                   
-                <select style={iStyle2} value={assetCompany} onChange={e => setAssetCompany(e.target.value)} title="Filter Perusahaan">
-                  <option value="">-- Semua Perusahaan --</option>
-                  {meta.companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-
-                <select style={iStyle2} value={assetCategory} onChange={e => setAssetCategory(e.target.value)} title="Filter Kategori">
-                  <option value="">-- Semua Kategori --</option>
-                  {meta.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                <div className="grid grid-cols-2 gap-2">
+                  <select className="input-premium !py-1.5 !text-xxs" value={assetCompany} onChange={e => setAssetCompany(e.target.value)} title="Filter Co">
+                    <option value="">-- Perusahaan --</option>
+                    {meta.companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                  <select className="input-premium !py-1.5 !text-xxs" value={assetCategory} onChange={e => setAssetCategory(e.target.value)} title="Filter Cat">
+                    <option value="">-- Kategori --</option>
+                    {meta.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
               </div>
 
-              <div style={{ maxHeight: 340, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div className="flex flex-col gap-1.5 mt-2 max-h-[300px] overflow-y-auto pr-1">
                 {filteredAssets.slice(0, 50).map(a => (
-                  <button key={a.id} type="button" onClick={() => addFromAsset(a)} style={{
-                    display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.6rem',
-                    borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface-2)',
-                    cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s',
-                  }}
-                  onMouseOver={e => (e.currentTarget.style.borderColor = 'var(--blue)')}
-                  onMouseOut={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
-                    <Package size={13} color="var(--blue)" style={{ flexShrink: 0 }} />
-                    <div>
-                      <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text)' }}>{a.asset_code}</p>
-                      <p style={{ fontSize: '0.65rem', color: 'var(--text-3)' }}>{a.asset_name}</p>
+                  <button 
+                    key={a.id} 
+                    type="button" 
+                    onClick={() => addFromAsset(a)} 
+                    className="flex-start gap-2.5 p-2 rounded-xl border border-border bg-surface-2 hover:border-blue transition-all group"
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-blue-light text-blue flex-center shrink-0">
+                      <Package size={14} />
                     </div>
-                    <Plus size={13} color="var(--text-3)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
+                    <div className="flex-1 text-left">
+                      <p className="text-xs-bold text-text truncate">{a.asset_code}</p>
+                      <p className="text-xxxs text-text-3 truncate">{a.asset_name}</p>
+                    </div>
+                    <Plus size={14} className="text-text-3 group-hover:text-blue" />
                   </button>
                 ))}
                 {assets.length === 0 && (
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-3)', textAlign: 'center', padding: '1rem' }}>
-                    Memuat data aset…
-                  </p>
+                  <div className="py-10 text-center">
+                    <p className="text-xs text-text-3">Memuat data aset…</p>
+                  </div>
                 )}
               </div>
             </div>
@@ -534,77 +560,75 @@ export default function BarcodePage() {
         </div>
 
         {/* ══ RIGHT PANEL ══════════════════════════════════════ */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div className="barcode-main-content">
 
           {/* Toolbar */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <button type="button" className="btn" onClick={addItem}><Plus size={14}/> Tambah Item</button>
-            <button type="button" className="btn btn-primary" onClick={printAll}><Printer size={14}/> Print Semua ({items.length})</button>
-            <button type="button" className="btn" onClick={downloadSingle}><Download size={14}/> Download SVG</button>
-            <div style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-3)', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.35rem 0.75rem' }}>
-              {items.length} item
+          <div className="flex-between flex-wrap gap-2">
+            <div className="flex gap-2">
+              <button type="button" className="btn" onClick={addItem}><Plus size={14}/> Tambah Item</button>
+              <button type="button" className="btn btn-primary" onClick={printAll}><Printer size={14}/> Print ({items.length})</button>
+              <button type="button" className="btn" onClick={downloadSingle}><Download size={14}/> SVG</button>
+            </div>
+            <div className="px-3 py-1.5 bg-surface-2 border border-border rounded-xl text-xxs-bold text-text-3 uppercase letter-wide">
+              {items.length} Item
             </div>
           </div>
 
           {/* Item list tabs */}
           {items.length > 1 && (
-            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+            <div className="flex gap-1.5 flex-wrap">
               {items.map((item, i) => (
-                <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <button type="button" onClick={() => setActiveId(item.id)} style={{
-                    padding: '0.3rem 0.7rem', borderRadius: '6px 6px 0 0',
-                    border: `1px solid ${activeId === item.id ? 'var(--blue)' : 'var(--border)'}`,
-                    borderBottom: activeId === item.id ? '1px solid var(--surface)' : '1px solid var(--border)',
-                    background: activeId === item.id ? 'var(--blue-light)' : 'var(--surface-2)',
-                    color: activeId === item.id ? 'var(--blue)' : 'var(--text-2)',
-                    fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer',
-                  }}>
-                    {item.text.slice(0, 12)}{item.text.length > 12 ? '…' : ''} #{i + 1}
+                <div key={item.id} className="flex-start gap-px group">
+                  <button 
+                    type="button" 
+                    onClick={() => setActiveId(item.id)} 
+                    className={`px-3 py-1.5 rounded-l-lg border font-700 text-xxs transition-all ${
+                      activeId === item.id ? 'bg-blue border-blue text-white shadow-sm' : 'bg-surface-2 border-border text-text-3 hover:bg-surface'
+                    }`}
+                  >
+                    {item.text.slice(0, 10)}{item.text.length > 10 ? '…' : ''} #{i + 1}
                   </button>
-                  {items.length > 1 && (
-                    <button type="button" onClick={() => removeItem(item.id)} title="Hapus Item" aria-label="Hapus Item" style={{
-                      padding: '0.3rem 0.35rem', borderRadius: '0 6px 0 0',
-                      border: '1px solid var(--border)', borderLeft: 'none',
-                      background: 'var(--surface-2)', cursor: 'pointer', color: 'var(--text-3)',
-                      display: 'flex', alignItems: 'center',
-                    }}>
-                      <Trash2 size={10} />
-                    </button>
-                  )}
+                  <button 
+                    type="button" 
+                    onClick={() => removeItem(item.id)} 
+                    title="Hapus"
+                    className={`px-1.5 py-1.5 rounded-r-lg border border-l-0 transition-all ${
+                      activeId === item.id ? 'bg-blue border-blue text-white/70 hover:text-white' : 'bg-surface-2 border-border text-text-3 hover:text-rose'
+                    }`}
+                  >
+                    <Trash2 size={11} />
+                  </button>
                 </div>
               ))}
             </div>
           )}
 
           {/* Preview area */}
-          <div className="preview-area" style={{
-            background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16,
-            padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center',
-            gap: '1rem', minHeight: 220,
-            backgroundImage: 'radial-gradient(circle, var(--border) 1px, transparent 1px)',
-            backgroundSize: '20px 20px',
-          }}>
-            <BarcodePreview item={activeItem} config={config} />
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-              <button type="button" className="btn" style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem' }} title="Salin Teks Barcode"
-                onClick={() => copyText(activeItem.text)}>
-                {copied === activeItem.text ? <Check size={13} color="var(--emerald)" /> : <Copy size={13} />}
-                {copied === activeItem.text ? 'Disalin!' : 'Salin Teks'}
-              </button>
+          <div className="barcode-preview-card preview-area">
+            <div className="barcode-preview-bg" />
+            <div className="relative z-1">
+              <BarcodePreview item={activeItem} config={config} />
+              <div className="flex-center mt-6">
+                <button type="button" className="btn bg-white/80 backdrop-blur-md shadow-sm !text-xxs !px-3 !py-1.5"
+                  onClick={() => copyText(activeItem.text)}>
+                  {copied === activeItem.text ? <Check size={12} className="text-emerald" /> : <Copy size={12} />}
+                  <span>{copied === activeItem.text ? 'Disalin!' : 'Salin Teks'}</span>
+                </button>
+              </div>
             </div>
           </div>
 
           {/* Print preview grid */}
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '1.25rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-              <p style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          <div className="barcode-panel-card">
+            <div className="flex-between mb-4">
+              <p className="barcode-setting-label-text">
                 Preview Print — {items.length} item
               </p>
-              <button type="button" className="btn btn-primary" style={{ fontSize: '0.75rem', padding: '0.35rem 0.8rem' }} onClick={printAll}>
+              <button type="button" className="btn btn-primary !text-xxs !py-1 !px-3" onClick={printAll}>
                 <Printer size={13} /> Print
               </button>
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <div className="flex flex-wrap gap-3">
               {items.map(item => (
                 <PrintCard key={item.id} item={item} config={config} />
               ))}

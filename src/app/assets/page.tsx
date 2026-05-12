@@ -97,12 +97,17 @@ export default function AssetsPage() {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [search, setSearch] = useState('');
   const [catFilter, setCat] = useState('');
   const [statFilter, setStat] = useState('');
+  const [compFilter, setComp] = useState('');
+
+  const [appliedFilters, setAppliedFilters] = useState({ search: '', cat: '', stat: '', comp: '' });
+  const [hasSearched, setHasSearched] = useState(false);
+  const [kpi, setKpi] = useState({ total_assets: 0, total_value: 0 });
 
   const [meta, setMeta] = useState<Meta>({ companies: [], categories: [], types: [], conditions: [], statuses: [] });
 
@@ -127,14 +132,15 @@ export default function AssetsPage() {
       .catch(() => { });
   }, []);
 
-  const fetchAssets = useCallback(async (p: number) => {
+  const fetchAssets = useCallback(async (p: number, filters = appliedFilters) => {
     setLoading(true); setError(null);
     try {
       const qs = new URLSearchParams({
         page: String(p), limit: String(LIMIT),
-        ...(search && { search }),
-        ...(catFilter && { category: catFilter }),
-        ...(statFilter && { status: statFilter }),
+        ...(filters.search && { search: filters.search }),
+        ...(filters.cat && { category: filters.cat }),
+        ...(filters.stat && { status: filters.stat }),
+        ...(filters.comp && { company: filters.comp }),
       });
       const res = await fetch(`/api/assets?${qs}`);
       if (!res.ok) throw new Error('Gagal memuat data aset');
@@ -143,14 +149,41 @@ export default function AssetsPage() {
       setTotal(json.total);
       setTotalPages(json.totalPages);
       setPage(json.page);
+      setHasSearched(true);
     } catch (e: any) {
       setError(e.message);
     } finally {
       setLoading(false);
     }
-  }, [search, catFilter, statFilter]);
+  }, [appliedFilters]);
 
-  useEffect(() => { fetchAssets(1); }, [fetchAssets]);
+  const fetchKpi = useCallback(async (filters = appliedFilters) => {
+    try {
+      const qs = new URLSearchParams(filters.comp ? { company: filters.comp } : {});
+      const res = await fetch(`/api/assets/summary?${qs}`);
+      const data = await res.json();
+      setKpi(data);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [appliedFilters]);
+
+  const handleSearch = () => {
+    const filters = { search, cat: catFilter, stat: statFilter, comp: compFilter };
+    setAppliedFilters(filters);
+    fetchAssets(1, filters);
+    fetchKpi(filters);
+  };
+
+  // Fetch KPI & Meta on mount
+  useEffect(() => {
+    fetchKpi({ search: '', cat: '', stat: '', comp: '' });
+  }, []);
+
+  // Pagination change effect
+  useEffect(() => {
+    if (hasSearched) fetchAssets(page, appliedFilters);
+  }, [page]); // only trigger when page changes (not on mount, unless desired)
 
   const confirmDelete = (item: { id: number; name: string }) => {
     setDeleteItem(item);
@@ -236,7 +269,7 @@ export default function AssetsPage() {
       setShowAdd(false);
       setEditAsset(null);
       setForm(EMPTY_FORM);
-      fetchAssets(page);
+      if (hasSearched) fetchAssets(page, appliedFilters);
     } catch (e: any) {
       setFormError(e.message);
     } finally {
@@ -265,6 +298,18 @@ export default function AssetsPage() {
         </button>
       </div>
 
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="card">
+          <p className="text-xxs-bold text-text-3 uppercase letter-wide mb-1">Total Keseluruhan Aset</p>
+          <p className="text-2xl font-900 text-text">{fmt(kpi.total_assets)}</p>
+        </div>
+        <div className="card">
+          <p className="text-xxs-bold text-text-3 uppercase letter-wide mb-1">Total Nilai Perolehan</p>
+          <p className="text-2xl font-900 text-blue">Rp {fmt(kpi.total_value)}</p>
+        </div>
+      </div>
+
       <div className="filter-bar">
         <div className="search-box">
           <Search size={15} className="search-icon" />
@@ -276,17 +321,28 @@ export default function AssetsPage() {
             title="Cari Aset"
             aria-label="Cari aset inventory"
             value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            onChange={e => setSearch(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSearch()}
           />
         </div>
 
         <select 
+          id="ast_comp_filter"
+          value={compFilter} 
+          onChange={e => setComp(e.target.value)}
+          className="input-premium w-auto max-w-[150px]" 
+          title="Filter Perusahaan"
+        >
+          <option value="">Semua Perusahaan</option>
+          {meta.companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+
+        <select 
           id="ast_cat_filter"
           value={catFilter} 
-          onChange={e => { setCat(e.target.value); setPage(1); }}
-          className="input-premium w-auto" 
+          onChange={e => setCat(e.target.value)}
+          className="input-premium w-auto max-w-[150px]" 
           title="Filter Kategori"
-          aria-label="Filter berdasarkan kategori"
         >
           <option value="">Semua Kategori</option>
           {meta.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -295,14 +351,17 @@ export default function AssetsPage() {
         <select 
           id="ast_stat_filter"
           value={statFilter} 
-          onChange={e => { setStat(e.target.value); setPage(1); }}
-          className="input-premium w-auto" 
+          onChange={e => setStat(e.target.value)}
+          className="input-premium w-auto max-w-[150px]" 
           title="Filter Status"
-          aria-label="Filter berdasarkan status"
         >
           <option value="">Semua Status</option>
           {meta.statuses.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
+
+        <button className="btn btn-primary" onClick={handleSearch} title="Terapkan Filter">
+          Cari Data
+        </button>
 
         <div className="summary-box">
           <div className="summary-item">
@@ -340,8 +399,17 @@ export default function AssetsPage() {
               <tr>
                 <td colSpan={8} className="py-14 text-center">
                   <Package size={36} className="text-text-3 mx-auto mb-3 block" />
-                  <p className="text-sm-bold text-text-2">Tidak ada aset ditemukan</p>
-                  <p className="text-xs-muted mt-1">Coba ubah filter atau tambahkan aset baru</p>
+                  {hasSearched ? (
+                    <>
+                      <p className="text-sm-bold text-text-2">Tidak ada aset ditemukan</p>
+                      <p className="text-xs-muted mt-1">Coba ubah filter dan klik Cari Data</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm-bold text-text-2">Menunggu pencarian data</p>
+                      <p className="text-xs-muted mt-1">Silakan gunakan filter di atas dan klik Cari Data</p>
+                    </>
+                  )}
                 </td>
               </tr>
             ) : assets.map((a, i) => (
