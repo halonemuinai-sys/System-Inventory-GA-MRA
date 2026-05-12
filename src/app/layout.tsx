@@ -8,7 +8,7 @@ import { logout } from './login/actions';
 import {
   LayoutDashboard, Package, Truck, HardDrive,
   Users, ShieldCheck, FileText, Wrench, BarChart3,
-  Settings, LogOut, Bell, ChevronRight, ChevronLeft, Sun, Moon, Barcode, Menu
+  Settings, LogOut, Bell, ChevronRight, ChevronLeft, Sun, Moon, Barcode, Menu, Database
 } from 'lucide-react';
 import { ThemeProvider, useTheme } from '@/lib/theme';
 
@@ -43,6 +43,7 @@ const menuGroups = [
     items: [
       { icon: Barcode, label: 'Barcode Generator', href: '/barcode' },
       { icon: ShieldCheck, label: 'Stock Opname', href: '/stock-opname' },
+      { icon: Database, label: 'Master Data', href: '/master-data' },
     ],
   },
 ];
@@ -108,11 +109,11 @@ function Shell({ children }: { children: React.ReactNode }) {
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
         {/* Modern Desktop Collapse Toggle */}
         <button 
-          className="hidden lg:flex absolute -right-4 top-7 w-8 h-8 bg-surface border border-slate-200 rounded-full items-center justify-center text-slate-500 hover:text-blue hover:border-blue hover:bg-blue-50 shadow-md hover:shadow-lg transition-all z-50 cursor-pointer"
+          className="hidden lg:flex absolute -right-4 top-10 w-8 h-8 bg-surface border border-slate-200 rounded-full items-center justify-center text-slate-500 hover:text-blue hover:border-blue hover:bg-blue-50 shadow-md hover:shadow-lg transition-all z-[300] cursor-pointer"
           onClick={() => setIsCollapsed(!isCollapsed)}
           aria-label={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
         >
-          <ChevronLeft size={16} className={`transition-transform duration-300 ${isCollapsed ? 'rotate-180' : ''}`} />
+          <ChevronLeft size={16} className={`transition-transform duration-500 ease-in-out ${isCollapsed ? 'rotate-180' : ''}`} />
         </button>
 
         <div className="sidebar-logo">
