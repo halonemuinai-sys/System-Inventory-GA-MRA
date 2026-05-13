@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import {
   AlertCircle, RefreshCw, Package, HardDrive, Truck, Users,
   ShieldCheck, FileText, TrendingUp, TrendingDown, ChevronRight,
+  Scale, BookOpen, FileSignature, BadgeCheck, Gavel, UserCheck, Landmark, FlaskConical,
 } from 'lucide-react';
 import {
   PieChart, Pie, Cell, ResponsiveContainer,
@@ -224,9 +225,10 @@ function HeroCard({
 //  MAIN PAGE
 // ═════════════════════════════════════════════════════════════
 export default function Home() {
-  const [data, setData]       = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState<string|null>(null);
+  const [data, setData]                   = useState<any>(null);
+  const [loading, setLoading]             = useState(true);
+  const [error, setError]                 = useState<string|null>(null);
+  const [compNotifs, setCompNotifs]       = useState<any[]>([]);
 
   async function load() {
     setLoading(true); setError(null);
@@ -243,7 +245,13 @@ export default function Home() {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    fetch('/api/legal-docs/notifications')
+      .then(r => r.json())
+      .then(d => setCompNotifs(d.items || []))
+      .catch(() => {});
+  }, []);
 
   if (loading) return (
     <div className="flex-center h-82vh flex-col gap-4">
@@ -703,6 +711,82 @@ export default function Home() {
           </div>
         </SCard>
       </div>
+
+      {/* ═══════════════════════ LEGAL & COMPLIANCE ALERTS ═ */}
+      {compNotifs.length > 0 && (
+        <>
+          <SecTitle>Legal &amp; Compliance — Perhatian Segera</SecTitle>
+          <div className="bg-surface border border-rose-200 rounded-2xl overflow-hidden shadow-premium mb-4">
+            <div className="px-4 py-3 border-b border-rose-100 bg-rose-50/60 flex-between">
+              <div className="flex-start gap-2">
+                <Scale size={14} className="text-rose"/>
+                <span className="text-xxs-bold text-rose uppercase letter-wide">
+                  Dokumen Mendekati / Melewati Kadaluarsa
+                </span>
+              </div>
+              <span className="text-xxs font-800 bg-rose text-white px-2 py-0.5 rounded-full">
+                {compNotifs.length} dokumen
+              </span>
+            </div>
+            <div className="divide-y divide-border-subtle">
+              {compNotifs.slice(0, 8).map((d: any) => {
+                const isExpired  = d.status === 'Expired';
+                const isCritical = d.status === 'Critical';
+                const dayNum     = parseInt(d.days_until_expiry);
+                const dayLabel   = dayNum < 0
+                  ? `Expired ${Math.abs(dayNum)} hari lalu`
+                  : dayNum === 0 ? 'Hari ini!'
+                  : `${dayNum} hari lagi`;
+                const moduleIcon: Record<string, React.ReactNode> = {
+                  contract:           <FileSignature size={11}/>,
+                  corporate:          <Scale size={11}/>,
+                  litigation:         <Gavel size={11}/>,
+                  license:            <BadgeCheck size={11}/>,
+                  monitoring:         <Scale size={11}/>,
+                  sop:                <BookOpen size={11}/>,
+                  hr_compliance:      <UserCheck size={11}/>,
+                  tax_finance:        <Landmark size={11}/>,
+                  product_regulatory: <FlaskConical size={11}/>,
+                };
+                const moduleLabel: Record<string, string> = {
+                  contract: 'Contract', corporate: 'Corporate Legal', litigation: 'Litigation',
+                  license: 'License & Permit', monitoring: 'Compliance',
+                  sop: 'SOP & Policy', hr_compliance: 'HR & Employment',
+                  tax_finance: 'Tax & Finance', product_regulatory: 'Product Regulatory',
+                };
+                return (
+                  <div key={d.id} className={`flex-between px-4 py-2.5 ${isExpired || isCritical ? 'bg-rose-50/30' : ''}`}>
+                    <div className="flex-start gap-3 flex-1 min-w-0">
+                      <div className={`w-2 h-2 rounded-full shrink-0 ${isExpired || isCritical ? 'bg-rose' : 'bg-amber'}`}/>
+                      <div className="min-w-0">
+                        <p className="text-xs font-700 text-text truncate">{d.doc_name}</p>
+                        <p className="text-xxs text-text-3 flex-start gap-1">
+                          <span className="flex-start gap-0.5">{moduleIcon[d.module]}{moduleLabel[d.module] || d.module}</span>
+                          <span>·</span>
+                          <span>{d.category}</span>
+                          <span>·</span>
+                          <span>PIC: {d.pic}</span>
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0 ml-4">
+                      <p className={`text-xs font-800 ${isExpired || isCritical ? 'text-rose' : 'text-amber'}`}>{dayLabel}</p>
+                      <p className="text-xxs text-text-3">
+                        {new Date(d.expiry_date).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' })}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {compNotifs.length > 8 && (
+              <div className="px-4 py-2 border-t border-rose-100 bg-rose-50/40 text-center">
+                <span className="text-xxs text-rose font-700">+{compNotifs.length - 8} dokumen lainnya — lihat di menu Legal &amp; Compliance</span>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -3,12 +3,14 @@
 import './globals.css';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { logout } from './login/actions';
 import {
   LayoutDashboard, Package, Truck, HardDrive,
   Users, ShieldCheck, FileText, Wrench, BarChart3,
-  Settings, LogOut, Bell, ChevronRight, ChevronLeft, Sun, Moon, Barcode, Menu, Database
+  Settings, LogOut, Bell, ChevronRight, ChevronLeft, Sun, Moon, Barcode, Menu, Database,
+  FileSignature, Building2, BadgeCheck, ClipboardList, BookOpen,
+  Gavel, UserCheck, Landmark, FlaskConical,
 } from 'lucide-react';
 import { ThemeProvider, useTheme } from '@/lib/theme';
 
@@ -37,6 +39,25 @@ const menuGroups = [
   {
     label: 'KEUANGAN',
     items: [{ icon: BarChart3, label: 'Expenses', href: '/expenses' }],
+  },
+  {
+    label: 'LEGAL',
+    items: [
+      { icon: FileSignature, label: 'Contract & Agreement', href: '/legal/contracts',   module: 'contract'  },
+      { icon: Building2,     label: 'Corporate Legal',      href: '/legal/corporate',   module: 'corporate' },
+      { icon: Gavel,         label: 'Litigation & Dispute', href: '/legal/litigation',  module: 'litigation' },
+    ],
+  },
+  {
+    label: 'COMPLIANCE',
+    items: [
+      { icon: BadgeCheck,    label: 'License & Permit',     href: '/compliance/licenses',   module: 'license'           },
+      { icon: ClipboardList, label: 'Compliance Docs',      href: '/compliance/monitoring', module: 'monitoring'        },
+      { icon: BookOpen,      label: 'SOP & Policy',         href: '/compliance/sop',        module: 'sop'               },
+      { icon: UserCheck,     label: 'HR & Employment',      href: '/compliance/hr',         module: 'hr_compliance'     },
+      { icon: Landmark,      label: 'Tax & Finance',        href: '/compliance/tax',        module: 'tax_finance'       },
+      { icon: FlaskConical,  label: 'Product Regulatory',   href: '/compliance/product',    module: 'product_regulatory'},
+    ],
   },
   {
     label: 'TOOLS',
@@ -88,13 +109,27 @@ function NavThemeBtn() {
 
 // ── Shell (uses theme) ─────────────────────────────────────────
 function Shell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const pathname  = usePathname();
+  const router    = useRouter();
+  const [sidebarOpen, setSidebarOpen]       = useState(false);
+  const [isCollapsed, setIsCollapsed]       = useState(false);
+  const [alertTotal, setAlertTotal]     = useState(0);
+  const [alertByModule, setAlertByModule] = useState<Record<string, number>>({});
 
   // Close sidebar when navigating on mobile
   useEffect(() => {
     setSidebarOpen(false);
+  }, [pathname]);
+
+  // Fetch legal-docs notification counts
+  useEffect(() => {
+    fetch('/api/legal-docs/notifications')
+      .then(r => r.json())
+      .then(d => {
+        setAlertTotal(d.total || 0);
+        setAlertByModule(d.perModule || {});
+      })
+      .catch(() => {});
   }, [pathname]);
 
   return (
@@ -147,6 +182,11 @@ function Shell({ children }: { children: React.ReactNode }) {
                     <div className={`sidebar-item${active ? ' active' : ''}`} title={isCollapsed ? item.label : ''}>
                       <item.icon size={16} className={`shrink-0 ${active ? 'text-blue' : 'text-text-3'}`} />
                       <span className="flex-1">{item.label}</span>
+                      {!isCollapsed && (item as any).module && alertByModule[(item as any).module] > 0 && (
+                        <span className="ml-1 bg-rose text-white text-xxxs font-800 min-w-4 h-4 flex items-center justify-center rounded-full px-1 shrink-0">
+                          {alertByModule[(item as any).module] > 99 ? '99+' : alertByModule[(item as any).module]}
+                        </span>
+                      )}
                       {active && !isCollapsed && <ChevronRight size={13} className="text-blue shrink-0 opacity-60" />}
                     </div>
                   </Link>
@@ -192,9 +232,14 @@ function Shell({ children }: { children: React.ReactNode }) {
 
           <div className="nav-right ml-auto">
             <NavThemeBtn />
-            <div className="relative cursor-pointer" aria-label="Notifications" title="Notifications">
-              <Bell size={17} className="text-text-3" />
-              <div className="notif-badge" />
+            <div
+              className="relative cursor-pointer"
+              aria-label="Notifications"
+              title={alertTotal > 0 ? `${alertTotal} dokumen perlu perhatian` : 'Notifications'}
+              onClick={() => router.push('/compliance/licenses')}
+            >
+              <Bell size={17} className={alertTotal > 0 ? 'text-rose' : 'text-text-3'} />
+              {alertTotal > 0 && <div className="notif-badge" />}
             </div>
             <span className="nav-version">v1.0.0</span>
             <div className="nav-avatar" aria-label="User Avatar">GA</div>

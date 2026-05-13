@@ -1,0 +1,572 @@
+'use client';
+
+import { useEffect, useState, useCallback, useId } from 'react';
+import {
+  Search, Plus, Eye, Edit2, Trash2, AlertCircle,
+  Loader2, Save, FileCheck, RefreshCw, ExternalLink,
+} from 'lucide-react';
+import {
+  Badge, ModalShell, FF, SLabel, PaginationBar,
+  TableShell, InfoRow, SBox, FormError,
+} from '@/components/PageShared';
+
+// ── Config type ───────────────────────────────────────────────
+export interface LegalModuleConfig {
+  module:       string;
+  title:        string;
+  subtitle:     string;
+  icon:         React.ReactNode;
+  categories:   string[];
+  idLabel:      string;
+  expiryLabel:  string;
+  requireExpiry: boolean;  // expiry_date is mandatory + status badges shown
+}
+
+// ── Constants ─────────────────────────────────────────────────
+const EXPIRY_STATUS_CLS: Record<string, string> = {
+  Valid:    'badge-emerald',
+  Warning:  'badge-amber',
+  Critical: 'badge-rose',
+  Expired:  'badge-slate',
+};
+
+const EXPIRY_TEXT_CLS: Record<string, string> = {
+  Critical: 'text-rose',
+  Expired:  'text-rose',
+  Warning:  'text-amber',
+};
+
+const DOC_STATUSES = [
+  'Draft', 'Under Review', 'Approved', 'Active', 'Expiring Soon', 'Expired', 'Archived',
+];
+
+const DOC_STATUS_CLS: Record<string, string> = {
+  'Draft':         'badge-slate',
+  'Under Review':  'badge-amber',
+  'Approved':      'badge-indigo',
+  'Active':        'badge-emerald',
+  'Expiring Soon': 'badge-amber',
+  'Expired':       'badge-rose',
+  'Archived':      'badge-slate',
+};
+
+const CONFIDENTIALITY_LEVELS = [
+  'Public/Internal',
+  'Restricted',
+  'Confidential',
+  'Strictly Confidential / Privileged',
+];
+
+const CONF_CLS: Record<string, string> = {
+  'Public/Internal':                     'badge-emerald',
+  'Restricted':                          'badge-amber',
+  'Confidential':                        'badge-rose',
+  'Strictly Confidential / Privileged':  'badge-rose',
+};
+
+const ACTION_LABEL: Record<string, string> = {
+  upload: 'Upload', view: 'Dilihat', edit: 'Diubah', delete: 'Dihapus',
+};
+
+const fmtDate = (d: string) =>
+  d ? new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+
+const daysLabel = (days: number | null) => {
+  if (days === null || days === undefined) return null;
+  if (days < 0)   return `Expired ${Math.abs(days)} hari lalu`;
+  if (days === 0) return 'Hari ini kadaluarsa!';
+  return `${days} hari lagi`;
+};
+
+const EMPTY = {
+  doc_name: '', category: '', id_number: '',
+  issue_date: '', expiry_date: '',
+  pic: '', company_id: '', doc_status: 'Draft', confidentiality: 'Public/Internal',
+  file_url: '', file_name: '', notes: '',
+};
+
+// ── Main component ────────────────────────────────────────────
+export default function LegalDocPage({ config }: { config: LegalModuleConfig }) {
+  const { module, title, subtitle, icon, categories, idLabel, expiryLabel, requireExpiry } = config;
+
+  const [rows, setRows]             = useState<any[]>([]);
+  const [total, setTotal]           = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [page, setPage]             = useState(1);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState<string | null>(null);
+  const [search, setSearch]         = useState('');
+  const [catFilter, setCat]         = useState('');
+  const [statFilter, setStat]       = useState('');
+  const [docStatFilter, setDocStat] = useState('');
+  const [confFilter, setConf]       = useState('');
+  const [compFilter, setComp]       = useState('');
+  const [companies, setCompanies]   = useState<any[]>([]);
+  const [detail, setDetail]         = useState<any>(null);
+  const [dlLoading, setDlLoading]   = useState(false);
+  const [showAdd, setShowAdd]       = useState(false);
+  const [editRow, setEditRow]       = useState<any>(null);
+  const [form, setForm]             = useState<any>(EMPTY);
+  const [saving, setSaving]         = useState(false);
+  const [formErr, setFormErr]       = useState('');
+  const LIMIT = 20;
+  const uid = useId();
+
+  useEffect(() => {
+    fetch('/api/assets/meta')
+      .then(r => r.json())
+      .then(d => setCompanies(d.companies || []))
+      .catch(() => {});
+  }, []);
+
+  const load = useCallback(async (p: number) => {
+    setLoading(true); setError(null);
+    try {
+      const qs = new URLSearchParams({
+        module, page: String(p), limit: String(LIMIT),
+        ...(search        && { search }),
+        ...(catFilter     && { category: catFilter }),
+        ...(compFilter    && { company_id: compFilter }),
+        ...(statFilter    && { status: statFilter }),
+        ...(docStatFilter && { doc_status: docStatFilter }),
+        ...(confFilter    && { confidentiality: confFilter }),
+      });
+      const res = await fetch(`/api/legal-docs?${qs}`);
+      const j   = await res.json();
+      setRows(j.data ?? []); setTotal(j.total ?? 0);
+      setTotalPages(j.totalPages ?? 1); setPage(j.page ?? p);
+    } catch (e: any) { setError(e.message); } finally { setLoading(false); }
+  }, [module, search, catFilter, compFilter, statFilter, docStatFilter, confFilter]);
+
+  useEffect(() => { load(1); }, [load]);
+
+  const openDetail = async (id: number) => {
+    setDlLoading(true); setDetail(null);
+    const res = await fetch(`/api/legal-docs/${id}`);
+    setDetail(await res.json());
+    setDlLoading(false);
+  };
+
+  const openEdit = async (id: number) => {
+    const res = await fetch(`/api/legal-docs/${id}`);
+    const d   = await res.json();
+    setEditRow(d);
+    setForm({
+      doc_name:    d.doc_name    || '',
+      category:    d.category    || '',
+      id_number:   d.id_number   || '',
+      issue_date:  d.issue_date   ? d.issue_date.split('T')[0]   : '',
+      expiry_date: d.expiry_date  ? d.expiry_date.split('T')[0]  : '',
+      pic:         d.pic         || '',
+      company_id:  d.company_id  ? String(d.company_id) : '',
+      doc_status:      d.doc_status      || 'Draft',
+      confidentiality: d.confidentiality || 'Public/Internal',
+      file_url:    d.file_url    || '',
+      file_name:   d.file_name   || '',
+      notes:       d.notes       || '',
+    });
+    setFormErr('');
+  };
+
+  const openAdd  = () => { setEditRow(null); setForm(EMPTY); setFormErr(''); setShowAdd(true); };
+  const closeForm = () => { setShowAdd(false); setEditRow(null); setForm(EMPTY); setFormErr(''); };
+  const sf = (k: string, v: string) => setForm((f: any) => ({ ...f, [k]: v }));
+
+  const save = async () => {
+    if (!form.doc_name.trim()) { setFormErr('Nama dokumen wajib diisi');  return; }
+    if (!form.category)        { setFormErr('Kategori wajib dipilih');    return; }
+    if (!form.pic.trim())      { setFormErr('PIC wajib diisi');           return; }
+    if (requireExpiry && !form.expiry_date) { setFormErr(`${expiryLabel} wajib diisi`); return; }
+    setSaving(true);
+    try {
+      const url = editRow ? `/api/legal-docs/${editRow.id}` : '/api/legal-docs';
+      const res = await fetch(url, {
+        method: editRow ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ module, ...form }),
+      });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Gagal menyimpan'); }
+      closeForm(); load(page);
+    } catch (e: any) { setFormErr(e.message); } finally { setSaving(false); }
+  };
+
+  const handleDelete = async (id: number, name: string) => {
+    if (!confirm(`Hapus dokumen "${name}"? Tindakan ini tidak bisa dibatalkan.`)) return;
+    try {
+      const res = await fetch(`/api/legal-docs/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error();
+      setRows(prev => prev.filter(r => r.id !== id));
+      setTotal(t => t - 1);
+    } catch { alert('Gagal menghapus dokumen'); }
+  };
+
+  // ── Table headers ────────────────────────────────────────────
+  const headers = [
+    { label: idLabel },
+    { label: 'Nama Dokumen' },
+    { label: 'Kategori' },
+    { label: 'Klasifikasi' },
+    { label: 'Perusahaan' },
+    { label: 'PIC' },
+    { label: 'Tgl Terbit' },
+    ...(requireExpiry ? [{ label: expiryLabel, right: true as const }] : []),
+    ...(requireExpiry ? [{ label: 'Expiry Status', right: true as const }] : []),
+    { label: 'Status Dok', right: true as const },
+    { label: 'Aksi', right: true as const },
+  ];
+
+  return (
+    <div className="container animate-fade-in pb-12">
+
+      {/* HEADER */}
+      <div className="page-header">
+        <div>
+          <h1 className="header-title">{title}</h1>
+          <p className="header-subtitle">{subtitle}</p>
+        </div>
+        <button className="btn btn-primary" onClick={openAdd} title="Tambah Dokumen Baru">
+          <Plus size={16}/> Tambah Dokumen
+        </button>
+      </div>
+
+      {/* FILTERS */}
+      <div className="filter-bar">
+        <div className="search-box">
+          <Search size={15} className="search-icon"/>
+          <input
+            type="text"
+            placeholder={`Cari nama dokumen, ${idLabel.toLowerCase()}, PIC...`}
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            className="input-premium w-full pl-9"
+            title="Cari Dokumen"
+            aria-label={`Cari dokumen ${title}`}
+          />
+        </div>
+        <select
+          value={catFilter}
+          onChange={e => { setCat(e.target.value); setPage(1); }}
+          className="input-premium w-auto"
+          title="Filter Kategori"
+          aria-label="Filter kategori"
+        >
+          <option value="">Semua Kategori</option>
+          {categories.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select
+          value={compFilter}
+          onChange={e => { setComp(e.target.value); setPage(1); }}
+          className="input-premium w-auto"
+          title="Filter Perusahaan"
+          aria-label="Filter perusahaan"
+        >
+          <option value="">Semua Perusahaan</option>
+          {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        {requireExpiry && (
+          <select
+            value={statFilter}
+            onChange={e => { setStat(e.target.value); setPage(1); }}
+            className="input-premium w-auto"
+            title="Filter Status Kadaluarsa"
+            aria-label="Filter status kadaluarsa"
+          >
+            <option value="">Semua Expiry</option>
+            <option value="Critical">Critical</option>
+            <option value="Warning">Warning</option>
+            <option value="Valid">Valid</option>
+            <option value="Expired">Expired</option>
+          </select>
+        )}
+        <select
+          value={docStatFilter}
+          onChange={e => { setDocStat(e.target.value); setPage(1); }}
+          className="input-premium w-auto"
+          title="Filter Status Dokumen"
+          aria-label="Filter status dokumen"
+        >
+          <option value="">Semua Status</option>
+          {DOC_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <select
+          value={confFilter}
+          onChange={e => { setConf(e.target.value); setPage(1); }}
+          className="input-premium w-auto"
+          title="Filter Klasifikasi Kerahasiaan"
+          aria-label="Filter klasifikasi kerahasiaan"
+        >
+          <option value="">Semua Klasifikasi</option>
+          {CONFIDENTIALITY_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
+        </select>
+        <div className="summary-item">
+          <span className="text-text-3">Total: </span>
+          <span className="font-800 text-text">{total} dokumen</span>
+        </div>
+      </div>
+
+      {/* TABLE */}
+      {error ? (
+        <div className="error-alert-container">
+          <AlertCircle size={36} className="text-rose mb-3"/>
+          <p className="text-rose-bold">{error}</p>
+          <button className="btn btn-primary mt-4" onClick={() => load(page)} title="Coba Lagi">
+            <RefreshCw size={14}/> Coba Lagi
+          </button>
+        </div>
+      ) : (
+        <>
+          <TableShell headers={headers} loading={loading} colSpan={headers.length}>
+            {rows.length === 0 ? (
+              <tr><td colSpan={headers.length} className="py-14 text-center">
+                <div className="flex justify-center mb-3 text-text-3">{icon}</div>
+                <p className="text-sm-bold text-text-2">Tidak ada dokumen ditemukan</p>
+                <p className="text-xs-muted mt-1">Tambahkan dokumen {title} pertama</p>
+              </td></tr>
+            ) : rows.map(r => (
+              <tr key={r.id} className={`hover-row${(r.status === 'Critical' || r.status === 'Expired') ? ' bg-rose-50/20' : ''}`}>
+                <td className="td-p font-mono text-blue text-xs font-700">{r.id_number || '—'}</td>
+                <td className="td-p">
+                  <div className="text-sm-bold text-text">{r.doc_name}</div>
+                  {r.notes && <div className="text-xs-muted mt-0.5 truncate max-w-200">{r.notes}</div>}
+                </td>
+                <td className="td-p"><Badge label={r.category} colorClass="badge-indigo"/></td>
+                <td className="td-p">
+                  <Badge label={r.confidentiality || 'Public/Internal'} colorClass={CONF_CLS[r.confidentiality] || 'badge-emerald'}/>
+                </td>
+                <td className="td-p text-sm text-text-2">{r.company_name || '—'}</td>
+                <td className="td-p text-sm text-text-2">{r.pic}</td>
+                <td className="td-p text-sm text-text-2">{fmtDate(r.issue_date)}</td>
+                {requireExpiry && (
+                  <td className="td-p text-right">
+                    <div className={`text-xs-bold ${EXPIRY_TEXT_CLS[r.status] || 'text-text-2'}`}>
+                      {fmtDate(r.expiry_date)}
+                    </div>
+                    {r.days_until_expiry !== null && (
+                      <div className="text-xxs text-text-3 mt-0.5">{daysLabel(parseInt(r.days_until_expiry))}</div>
+                    )}
+                  </td>
+                )}
+                {requireExpiry && (
+                  <td className="td-p text-right">
+                    {r.status
+                      ? <Badge label={r.status} colorClass={EXPIRY_STATUS_CLS[r.status] || 'badge-slate'}/>
+                      : <span className="text-text-3">—</span>}
+                  </td>
+                )}
+                <td className="td-p text-right">
+                  <Badge label={r.doc_status || 'Draft'} colorClass={DOC_STATUS_CLS[r.doc_status] || 'badge-slate'}/>
+                </td>
+                <td className="td-p text-right">
+                  <div className="flex-end gap-2">
+                    <button className="btn-icon" title="Lihat Detail" aria-label={`Detail ${r.doc_name}`} onClick={() => openDetail(r.id)}>
+                      <Eye size={14}/>
+                    </button>
+                    <button className="btn-icon-blue" title="Edit" aria-label={`Edit ${r.doc_name}`} onClick={() => openEdit(r.id)}>
+                      <Edit2 size={14}/>
+                    </button>
+                    <button className="btn-icon text-rose hover:bg-rose-light" title="Hapus" aria-label={`Hapus ${r.doc_name}`} onClick={() => handleDelete(r.id, r.doc_name)}>
+                      <Trash2 size={14}/>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </TableShell>
+          {!loading && rows.length > 0 && (
+            <PaginationBar page={page} limit={LIMIT} total={total} totalPages={totalPages}
+              onChange={p => { setPage(p); load(p); }}/>
+          )}
+        </>
+      )}
+
+      {/* ── DETAIL MODAL ── */}
+      {(detail || dlLoading) && (
+        <ModalShell
+          title={detail ? `Detail — ${detail.doc_name}` : 'Memuat…'}
+          onClose={() => setDetail(null)}
+          size="md"
+        >
+          {dlLoading || !detail ? (
+            <div className="flex-center py-12"><Loader2 size={28} className="animate-spin text-blue"/></div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-lg-black">{detail.doc_name}</h2>
+                  <p className="text-xs-muted mt-1">{detail.category}{detail.id_number ? ` · ${detail.id_number}` : ''}</p>
+                </div>
+                <div className="flex flex-col items-end gap-1.5">
+                  <Badge label={detail.doc_status || 'Draft'} colorClass={DOC_STATUS_CLS[detail.doc_status] || 'badge-slate'}/>
+                  {detail.status && <Badge label={detail.status} colorClass={EXPIRY_STATUS_CLS[detail.status] || 'badge-slate'}/>}
+                </div>
+              </div>
+
+              <div className="detail-grid">
+                <SBox icon={<div className="text-blue">{icon}</div>} title="Informasi Dokumen">
+                  <InfoRow label="Kategori"    value={detail.category}/>
+                  {detail.id_number && <InfoRow label={idLabel} value={<span className="font-mono">{detail.id_number}</span>}/>}
+                  <InfoRow label="Perusahaan"  value={detail.company_name}/>
+                  <InfoRow label="PIC"         value={detail.pic}/>
+                  <InfoRow label="Status Dokumen" value={
+                    <Badge label={detail.doc_status || 'Draft'} colorClass={DOC_STATUS_CLS[detail.doc_status] || 'badge-slate'}/>
+                  }/>
+                  <InfoRow label="Klasifikasi Kerahasiaan" value={
+                    <Badge label={detail.confidentiality || 'Public/Internal'} colorClass={CONF_CLS[detail.confidentiality] || 'badge-emerald'}/>
+                  }/>
+                  <InfoRow label="Tgl Terbit" value={fmtDate(detail.issue_date)}/>
+                  {detail.expiry_date && (
+                    <InfoRow label={expiryLabel} value={
+                      <span className={EXPIRY_TEXT_CLS[detail.status] || 'text-text'}>
+                        {fmtDate(detail.expiry_date)}
+                        {detail.days_until_expiry !== null && (
+                          <span className="ml-1 text-xs-muted">({daysLabel(parseInt(detail.days_until_expiry))})</span>
+                        )}
+                      </span>
+                    }/>
+                  )}
+                </SBox>
+                <SBox icon={<FileCheck size={14}/>} title="Lampiran & Catatan">
+                  {detail.file_url ? (
+                    <a href={detail.file_url} target="_blank" rel="noopener noreferrer"
+                      className="flex-start gap-1.5 text-blue text-xs font-600 hover:underline mb-2">
+                      <ExternalLink size={12}/>
+                      {detail.file_name || 'Lihat Dokumen'}
+                    </a>
+                  ) : (
+                    <p className="text-xs-muted">Tidak ada file terlampir</p>
+                  )}
+                  {detail.notes && (
+                    <div className="mt-2">
+                      <p className="text-xs-bold mb-1">Catatan</p>
+                      <p className="text-sm-muted lh-1-6">{detail.notes}</p>
+                    </div>
+                  )}
+                </SBox>
+              </div>
+
+              {detail.audit_logs?.length > 0 && (
+                <div>
+                  <p className="text-xs-bold mb-2">Riwayat Aktivitas</p>
+                  <div className="flex flex-col max-h-36 overflow-y-auto border border-border rounded-xl">
+                    {detail.audit_logs.map((log: any, i: number) => (
+                      <div key={log.id} className={`flex-between text-xxs px-3 py-1.5 ${i < detail.audit_logs.length - 1 ? 'border-b border-border-subtle' : ''}`}>
+                        <span className="text-text font-700 uppercase">{ACTION_LABEL[log.action] || log.action}</span>
+                        <span className="text-text-3">{new Date(log.performed_at).toLocaleString('id-ID')}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="modal-footer-actions">
+                <button className="btn" onClick={() => { setDetail(null); openEdit(detail.id); }} title="Edit">
+                  <Edit2 size={14}/> Edit
+                </button>
+                <button className="btn btn-primary" onClick={() => setDetail(null)} title="Tutup">Tutup</button>
+              </div>
+            </div>
+          )}
+        </ModalShell>
+      )}
+
+      {/* ── ADD / EDIT MODAL ── */}
+      {(showAdd || editRow) && (
+        <ModalShell
+          title={editRow ? `Edit — ${editRow.doc_name}` : `Tambah ${title}`}
+          onClose={closeForm}
+          size="md"
+        >
+          <div className="flex flex-col gap-3">
+            <FormError msg={formErr}/>
+            <SLabel>Informasi Dokumen</SLabel>
+            <div className="detail-grid">
+              <FF label="Nama Dokumen" id={`${uid}-name`} required>
+                <input id={`${uid}-name`} type="text" value={form.doc_name}
+                  onChange={e => sf('doc_name', e.target.value)}
+                  placeholder="Nama dokumen lengkap" className="input-premium" title="Nama Dokumen"/>
+              </FF>
+              <FF label="Kategori" id={`${uid}-cat_f`} required>
+                <select id={`${uid}-cat_f`} value={form.category}
+                  onChange={e => sf('category', e.target.value)}
+                  className="input-premium" title="Kategori">
+                  <option value="">— Pilih Kategori —</option>
+                  {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </FF>
+              <FF label={idLabel} id={`${uid}-id_f`}>
+                <input id={`${uid}-id_f`} type="text" value={form.id_number}
+                  onChange={e => sf('id_number', e.target.value)}
+                  placeholder={`No. referensi / ${idLabel.toLowerCase()}`}
+                  className="input-premium" title={idLabel}/>
+              </FF>
+              <FF label="Perusahaan" id={`${uid}-co_f`}>
+                <select id={`${uid}-co_f`} value={form.company_id}
+                  onChange={e => sf('company_id', e.target.value)}
+                  className="input-premium" title="Perusahaan">
+                  <option value="">— Pilih Perusahaan —</option>
+                  {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </FF>
+              <FF label="PIC (Penanggung Jawab)" id={`${uid}-pic_f`} required>
+                <input id={`${uid}-pic_f`} type="text" value={form.pic}
+                  onChange={e => sf('pic', e.target.value)}
+                  placeholder="Nama PIC" className="input-premium" title="PIC"/>
+              </FF>
+              <FF label="Tanggal Terbit / Efektif" id={`${uid}-issue_f`}>
+                <input id={`${uid}-issue_f`} type="date" value={form.issue_date}
+                  onChange={e => sf('issue_date', e.target.value)}
+                  className="input-premium" title="Tanggal Terbit"/>
+              </FF>
+              <FF label={expiryLabel} id={`${uid}-exp_f`} required={requireExpiry}>
+                <input id={`${uid}-exp_f`} type="date" value={form.expiry_date}
+                  onChange={e => sf('expiry_date', e.target.value)}
+                  className="input-premium" title={expiryLabel}/>
+              </FF>
+              <FF label="Status Dokumen" id={`${uid}-docstat_f`} required>
+                <select id={`${uid}-docstat_f`} value={form.doc_status}
+                  onChange={e => sf('doc_status', e.target.value)}
+                  className="input-premium" title="Status Dokumen">
+                  {DOC_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </FF>
+              <FF label="Klasifikasi Kerahasiaan" id={`${uid}-conf_f`} required>
+                <select id={`${uid}-conf_f`} value={form.confidentiality}
+                  onChange={e => sf('confidentiality', e.target.value)}
+                  className="input-premium" title="Klasifikasi Kerahasiaan">
+                  {CONFIDENTIALITY_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
+                </select>
+              </FF>
+            </div>
+            <SLabel>Lampiran</SLabel>
+            <div className="detail-grid">
+              <FF label="URL File / Link Dokumen" id={`${uid}-url_f`}>
+                <input id={`${uid}-url_f`} type="url" value={form.file_url}
+                  onChange={e => sf('file_url', e.target.value)}
+                  placeholder="https://drive.google.com/..." className="input-premium" title="URL File"/>
+              </FF>
+              <FF label="Nama File" id={`${uid}-fname_f`}>
+                <input id={`${uid}-fname_f`} type="text" value={form.file_name}
+                  onChange={e => sf('file_name', e.target.value)}
+                  placeholder="contoh: Kontrak_2025.pdf" className="input-premium" title="Nama File"/>
+              </FF>
+            </div>
+            <FF label="Catatan" id={`${uid}-notes_f`}>
+              <textarea id={`${uid}-notes_f`} rows={2} value={form.notes}
+                onChange={e => sf('notes', e.target.value)}
+                placeholder="Catatan tambahan..." className="input-premium resize-y" title="Catatan"/>
+            </FF>
+            <div className="modal-footer-border">
+              <button className="btn" onClick={closeForm} disabled={saving} title="Batal">Batal</button>
+              <button className="btn btn-primary min-w-130" onClick={save} disabled={saving}
+                title={editRow ? 'Simpan' : 'Tambah'}>
+                {saving
+                  ? <><Loader2 size={14} className="animate-spin"/> Menyimpan…</>
+                  : <><Save size={14}/> {editRow ? 'Simpan' : 'Tambah'}</>}
+              </button>
+            </div>
+          </div>
+        </ModalShell>
+      )}
+    </div>
+  );
+}
