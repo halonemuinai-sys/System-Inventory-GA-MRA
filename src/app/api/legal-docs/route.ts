@@ -132,9 +132,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: error.message || 'Gagal menyimpan' }, { status: 500 });
   }
 }
-
-    return NextResponse.json({ id: newId, message: 'Dokumen berhasil ditambahkan' }, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Gagal menyimpan' }, { status: 500 });
-  }
-}
