@@ -180,18 +180,21 @@ function Shell({ children }: { children: React.ReactNode }) {
               {group.items.map((item) => {
                 const active = pathname === item.href;
                 return (
-                  <Link key={item.href} href={item.href} className="block no-underline">
-                    <div className={`sidebar-item${active ? ' active' : ''}`} title={isCollapsed ? item.label : ''}>
-                      <item.icon size={16} className={`shrink-0 ${active ? 'text-blue' : 'text-text-3'}`} />
-                      <span className="flex-1">{item.label}</span>
-                      {!isCollapsed && (item as any).module && alertByModule[(item as any).module] > 0 && (
-                        <span className="ml-1 bg-rose text-white text-xxxs font-800 min-w-4 h-4 flex items-center justify-center rounded-full px-1 shrink-0">
-                          {alertByModule[(item as any).module] > 99 ? '99+' : alertByModule[(item as any).module]}
-                        </span>
-                      )}
-                      {active && !isCollapsed && <ChevronRight size={13} className="text-blue shrink-0 opacity-60" />}
-                    </div>
-                  </Link>
+                  <div key={item.href} className="sidebar-item-wrap">
+                    <Link href={item.href} className="block no-underline">
+                      <div className={`sidebar-item${active ? ' active' : ''}`}>
+                        <item.icon size={16} className={`shrink-0 ${active ? 'text-blue' : 'text-text-3'}`} />
+                        <span className="flex-1">{item.label}</span>
+                        {!isCollapsed && (item as any).module && alertByModule[(item as any).module] > 0 && (
+                          <span className="ml-1 bg-rose text-white text-xxxs font-800 min-w-4 h-4 flex items-center justify-center rounded-full px-1 shrink-0">
+                            {alertByModule[(item as any).module] > 99 ? '99+' : alertByModule[(item as any).module]}
+                          </span>
+                        )}
+                        {active && !isCollapsed && <ChevronRight size={13} className="text-blue shrink-0 opacity-60" />}
+                      </div>
+                    </Link>
+                    {isCollapsed && <div className="flyout-label">{item.label}</div>}
+                  </div>
                 );
               })}
             </div>
@@ -201,16 +204,22 @@ function Shell({ children }: { children: React.ReactNode }) {
         <div className="sidebar-footer">
           <ThemeTogglePill />
           <div className="h-1.5" />
-          <Link href="/settings/password" className="block no-underline">
-            <div className={`sidebar-item${pathname === '/settings/password' ? ' active' : ''}`} title={isCollapsed ? 'Settings' : ''}>
-              <Settings size={15} className={`shrink-0 ${pathname === '/settings/password' ? 'text-blue' : 'text-text-3'}`} />
-              <span>Settings</span>
-            </div>
-          </Link>
-          <button className="sidebar-item text-rose w-full text-left bg-transparent border-none font-inherit outline-none" title={isCollapsed ? 'Logout' : ''} onClick={() => logout()}>
-            <LogOut size={15} className="shrink-0 text-rose" />
-            <span>Logout</span>
-          </button>
+          <div className="sidebar-item-wrap">
+            <Link href="/settings/password" className="block no-underline">
+              <div className={`sidebar-item${pathname === '/settings/password' ? ' active' : ''}`}>
+                <Settings size={15} className={`shrink-0 ${pathname === '/settings/password' ? 'text-blue' : 'text-text-3'}`} />
+                <span>Settings</span>
+              </div>
+            </Link>
+            {isCollapsed && <div className="flyout-label">Settings</div>}
+          </div>
+          <div className="sidebar-item-wrap">
+            <button type="button" className="sidebar-item text-rose w-full text-left bg-transparent border-none font-inherit outline-none" onClick={() => logout()}>
+              <LogOut size={15} className="shrink-0 text-rose" />
+              <span>Logout</span>
+            </button>
+            {isCollapsed && <div className="flyout-label">Logout</div>}
+          </div>
           {!isCollapsed && (
             <p className="text-xxxs text-text-3 text-center mt-2.5 leading-normal opacity-60">
               © 2026 MRA Group
