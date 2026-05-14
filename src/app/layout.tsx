@@ -43,20 +43,22 @@ const menuGroups = [
   {
     label: 'LEGAL',
     items: [
-      { icon: FileSignature, label: 'Contract & Agreement', href: '/legal/contracts',   module: 'contract'  },
-      { icon: Building2,     label: 'Corporate Legal',      href: '/legal/corporate',   module: 'corporate' },
-      { icon: Gavel,         label: 'Litigation & Dispute', href: '/legal/litigation',  module: 'litigation' },
+      { icon: LayoutDashboard, label: 'Legal Dashboard',     href: '/legal/dashboard'                                    },
+      { icon: FileSignature,   label: 'Contract & Agreement', href: '/legal/contracts',   module: 'contract'  },
+      { icon: Building2,       label: 'Corporate Legal',      href: '/legal/corporate',   module: 'corporate' },
+      { icon: Gavel,           label: 'Litigation & Dispute', href: '/legal/litigation',  module: 'litigation' },
     ],
   },
   {
     label: 'COMPLIANCE',
     items: [
-      { icon: BadgeCheck,    label: 'License & Permit',     href: '/compliance/licenses',   module: 'license'           },
-      { icon: ClipboardList, label: 'Compliance Docs',      href: '/compliance/monitoring', module: 'monitoring'        },
-      { icon: BookOpen,      label: 'SOP & Policy',         href: '/compliance/sop',        module: 'sop'               },
-      { icon: UserCheck,     label: 'HR & Employment',      href: '/compliance/hr',         module: 'hr_compliance'     },
-      { icon: Landmark,      label: 'Tax & Finance',        href: '/compliance/tax',        module: 'tax_finance'       },
-      { icon: FlaskConical,  label: 'Product Regulatory',   href: '/compliance/product',    module: 'product_regulatory'},
+      { icon: LayoutDashboard, label: 'Compliance Dashboard', href: '/compliance/dashboard'                                       },
+      { icon: BadgeCheck,      label: 'License & Permit',     href: '/compliance/licenses',   module: 'license'           },
+      { icon: ClipboardList,   label: 'Compliance Docs',      href: '/compliance/monitoring', module: 'monitoring'        },
+      { icon: BookOpen,        label: 'SOP & Policy',         href: '/compliance/sop',        module: 'sop'               },
+      { icon: UserCheck,       label: 'HR & Employment',      href: '/compliance/hr',         module: 'hr_compliance'     },
+      { icon: Landmark,        label: 'Tax & Finance',        href: '/compliance/tax',        module: 'tax_finance'       },
+      { icon: FlaskConical,    label: 'Product Regulatory',   href: '/compliance/product',    module: 'product_regulatory'},
     ],
   },
   {
