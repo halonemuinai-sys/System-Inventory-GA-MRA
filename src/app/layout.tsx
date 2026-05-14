@@ -144,71 +144,76 @@ function NotifPanel({ items, total, onClose }: { items: NotifItem[]; total: numb
   }, [onClose]);
 
   return (
-    <div
-      ref={panelRef}
-      className="notif-panel"
-    >
-      {/* Header */}
+    <div ref={panelRef} className="notif-panel">
+
+      {/* ── HEADER ── */}
       <div className="notif-panel-header">
-        <div className="flex items-center gap-2">
-          <Bell size={14} className="text-blue" />
-          <span className="text-xs font-800 text-text">Notifikasi Dokumen</span>
-          {total > 0 && (
-            <span className="bg-rose text-white text-xxxs font-800 px-1.5 py-0.5 rounded-full">{total}</span>
-          )}
+        <div className="notif-header-left">
+          <div className="notif-header-icon">
+            <Bell size={13} />
+          </div>
+          <div>
+            <p className="notif-header-title">Notifikasi</p>
+            <p className="notif-header-sub">
+              {total > 0 ? `${total} dokumen perlu perhatian` : 'Semua dokumen aman'}
+            </p>
+          </div>
         </div>
-        <button type="button" onClick={onClose} title="Tutup" className="p-1 rounded-lg hover:bg-surface-2 transition-colors text-text-3 hover:text-text">
-          <X size={13} />
+        <button type="button" onClick={onClose} title="Tutup" className="notif-close-btn">
+          <X size={12} />
         </button>
       </div>
 
-      {/* Body */}
+      {/* ── BODY ── */}
       <div className="notif-panel-body">
         {items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10 gap-3">
-            <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center">
-              <Bell size={20} className="text-emerald-500" />
+          <div className="notif-empty">
+            <div className="notif-empty-icon">
+              <Bell size={18} />
             </div>
-            <p className="text-xs font-600 text-text-2">Semua dokumen dalam kondisi baik</p>
-            <p className="text-xxs text-text-3">Tidak ada dokumen kritis atau kadaluarsa</p>
+            <p className="notif-empty-title">Semua beres!</p>
+            <p className="notif-empty-sub">Tidak ada dokumen yang perlu perhatian saat ini.</p>
           </div>
         ) : (
-          <div className="flex flex-col">
-            {items.map((item) => {
-              const days = Number(item.days_until_expiry);
-              const isExp = days < 0;
-              const accent = isExp ? 'var(--rose)' : days <= 7 ? 'var(--rose)' : days <= 30 ? '#f97316' : '#eab308';
-              const badgeCls = isExp || days <= 7 ? 'notif-badge-red' : days <= 30 ? 'notif-badge-orange' : 'notif-badge-yellow';
-              const dayLabel = isExp ? `${Math.abs(days)}h lalu` : days === 0 ? 'Hari ini' : `${days} hari lagi`;
-              return (
-                <div key={item.id} className="notif-item" style={{ borderLeftColor: accent }}>
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <span className="text-xxs font-700 text-text-3 uppercase tracking-wide">
-                      {MODULE_LABELS[item.module] ?? item.module} · {item.category}
-                    </span>
+          items.map((item) => {
+            const days    = Number(item.days_until_expiry);
+            const isExp   = days < 0;
+            const dotCls  = isExp || days <= 7 ? 'notif-dot-red' : days <= 30 ? 'notif-dot-orange' : 'notif-dot-yellow';
+            const badgeCls= isExp || days <= 7 ? 'notif-badge-red' : days <= 30 ? 'notif-badge-orange' : 'notif-badge-yellow';
+            const dayLabel= isExp ? `Expired ${Math.abs(days)}h lalu` : days === 0 ? 'Hari ini!' : `${days} hari lagi`;
+            const mod     = MODULE_LABELS[item.module] ?? item.module;
+            return (
+              <div key={item.id} className="notif-item">
+                {/* dot indicator */}
+                <div className={`notif-dot ${dotCls}`} />
+                <div className="notif-item-body">
+                  {/* top row: doc name + day badge */}
+                  <div className="notif-item-top">
+                    <p className="notif-item-name" title={item.doc_name}>{item.doc_name}</p>
                     <span className={`notif-day-badge ${badgeCls}`}>{dayLabel}</span>
                   </div>
-                  <p className="text-xs font-700 text-text leading-snug mb-1 truncate" title={item.doc_name}>{item.doc_name}</p>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xxs text-text-3">PIC: {item.pic}</span>
-                    <span className="text-xxs text-text-3">{fmtDate(item.expiry_date)}</span>
+                  {/* meta row */}
+                  <div className="notif-item-meta">
+                    <span className="notif-meta-pill">{mod}</span>
+                    <span className="notif-meta-sep">·</span>
+                    <span>{item.category}</span>
+                    <span className="notif-meta-sep">·</span>
+                    <span>PIC: {item.pic}</span>
                   </div>
+                  {/* date */}
+                  <p className="notif-item-date">{fmtDate(item.expiry_date)}</p>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })
         )}
       </div>
 
-      {/* Footer */}
+      {/* ── FOOTER ── */}
       {items.length > 0 && (
         <div className="notif-panel-footer">
-          <Link href="/legal/dashboard" className="notif-footer-link" onClick={onClose}>
-            Lihat Legal Dashboard →
-          </Link>
-          <Link href="/compliance/dashboard" className="notif-footer-link" onClick={onClose}>
-            Lihat Compliance Dashboard →
-          </Link>
+          <Link href="/legal/dashboard"      className="notif-footer-link" onClick={onClose}>Legal →</Link>
+          <Link href="/compliance/dashboard" className="notif-footer-link" onClick={onClose}>Compliance →</Link>
         </div>
       )}
     </div>
