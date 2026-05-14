@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { createClient } from '@/utils/supabase/server';
 
 const STATUS_EXPR = `
   CASE
@@ -13,6 +14,10 @@ const STATUS_EXPR = `
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const performer = user?.email || 'system';
+
     const { id } = await params;
     const res = await query(
       `SELECT ld.*,
@@ -29,8 +34,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
     const doc = res.rows[0];
     await query(
-      `INSERT INTO legal_audit_logs (document_id, doc_name, module, action) VALUES ($1,$2,$3,'view')`,
-      [id, doc.doc_name, doc.module]
+      `INSERT INTO legal_audit_logs (document_id, doc_name, module, action, performed_by) VALUES ($1,$2,$3,'view',$4)`,
+      [id, doc.doc_name, doc.module, performer]
     );
 
     const logs = await query(
@@ -46,6 +51,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const performer = user?.email || 'system';
+
     const { id } = await params;
     const { doc_name, category, id_number, issue_date, expiry_date,
             pic, company_id, doc_status, confidentiality,
@@ -69,8 +78,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
     const existing = await query(`SELECT module FROM legal_documents WHERE id = $1`, [id]);
     await query(
-      `INSERT INTO legal_audit_logs (document_id, doc_name, module, action) VALUES ($1,$2,$3,'edit')`,
-      [id, doc_name, existing.rows[0]?.module]
+      `INSERT INTO legal_audit_logs (document_id, doc_name, module, action, performed_by) VALUES ($1,$2,$3,'edit',$4)`,
+      [id, doc_name, existing.rows[0]?.module, performer]
     );
 
     return NextResponse.json({ message: 'Dokumen berhasil diperbarui' });
@@ -81,14 +90,18 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const performer = user?.email || 'system';
+
     const { id } = await params;
     const existing = await query(`SELECT doc_name, module FROM legal_documents WHERE id = $1`, [id]);
     const { doc_name = 'Unknown', module = '' } = existing.rows[0] || {};
 
     await query(`DELETE FROM legal_documents WHERE id = $1`, [id]);
     await query(
-      `INSERT INTO legal_audit_logs (document_id, doc_name, module, action) VALUES (NULL,$1,$2,'delete')`,
-      [doc_name, module]
+      `INSERT INTO legal_audit_logs (document_id, doc_name, module, action, performed_by) VALUES (NULL,$1,$2,'delete',$3)`,
+      [doc_name, module, performer]
     );
 
     return NextResponse.json({ message: 'Dokumen berhasil dihapus' });

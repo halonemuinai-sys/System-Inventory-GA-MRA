@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { createClient } from '@/utils/supabase/server';
 
 const STATUS_EXPR = `
   CASE
@@ -95,6 +96,10 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const performer = user?.email || 'system';
+
     const body = await req.json();
     const { module, doc_name, category, id_number, issue_date, expiry_date,
             pic, company_id, doc_status, confidentiality: conf,
@@ -118,9 +123,15 @@ export async function POST(req: Request) {
 
     const newId = res.rows[0].id;
     await query(
-      `INSERT INTO legal_audit_logs (document_id, doc_name, module, action) VALUES ($1,$2,$3,'upload')`,
-      [newId, doc_name, module]
+      `INSERT INTO legal_audit_logs (document_id, doc_name, module, action, performed_by) VALUES ($1,$2,$3,'upload',$4)`,
+      [newId, doc_name, module, performer]
     );
+
+    return NextResponse.json({ id: newId, message: 'Dokumen berhasil ditambahkan' }, { status: 201 });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || 'Gagal menyimpan' }, { status: 500 });
+  }
+}
 
     return NextResponse.json({ id: newId, message: 'Dokumen berhasil ditambahkan' }, { status: 201 });
   } catch (error: any) {
