@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useId } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   Search, Plus, Eye, Edit2, Trash2, AlertCircle,
   Loader2, Save, FileCheck, RefreshCw, ExternalLink,
@@ -110,7 +110,6 @@ export default function LegalDocPage({ config }: { config: LegalModuleConfig }) 
   const [saving, setSaving]         = useState(false);
   const [formErr, setFormErr]       = useState('');
   const LIMIT = 20;
-  const uid = useId();
 
   useEffect(() => {
     fetch('/api/assets/meta')
@@ -480,57 +479,57 @@ export default function LegalDocPage({ config }: { config: LegalModuleConfig }) 
             <FormError msg={formErr}/>
             <SLabel>Informasi Dokumen</SLabel>
             <div className="detail-grid">
-              <FF label="Nama Dokumen" id={`${uid}-name`} required>
-                <input id={`${uid}-name`} type="text" value={form.doc_name}
+              <FF label="Nama Dokumen" id="ld_name" required>
+                <input id="ld_name" type="text" value={form.doc_name}
                   onChange={e => sf('doc_name', e.target.value)}
                   placeholder="Nama dokumen lengkap" className="input-premium" title="Nama Dokumen"/>
               </FF>
-              <FF label="Kategori" id={`${uid}-cat_f`} required>
-                <select id={`${uid}-cat_f`} value={form.category}
+              <FF label="Kategori" id="ld_cat" required>
+                <select id="ld_cat" value={form.category}
                   onChange={e => sf('category', e.target.value)}
                   className="input-premium" title="Kategori">
                   <option value="">— Pilih Kategori —</option>
                   {categories.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </FF>
-              <FF label={idLabel} id={`${uid}-id_f`}>
-                <input id={`${uid}-id_f`} type="text" value={form.id_number}
+              <FF label={idLabel} id="ld_id">
+                <input id="ld_id" type="text" value={form.id_number}
                   onChange={e => sf('id_number', e.target.value)}
                   placeholder={`No. referensi / ${idLabel.toLowerCase()}`}
                   className="input-premium" title={idLabel}/>
               </FF>
-              <FF label="Perusahaan" id={`${uid}-co_f`}>
-                <select id={`${uid}-co_f`} value={form.company_id}
+              <FF label="Perusahaan" id="ld_co">
+                <select id="ld_co" value={form.company_id}
                   onChange={e => sf('company_id', e.target.value)}
                   className="input-premium" title="Perusahaan">
                   <option value="">— Pilih Perusahaan —</option>
                   {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </FF>
-              <FF label="PIC (Penanggung Jawab)" id={`${uid}-pic_f`} required>
-                <input id={`${uid}-pic_f`} type="text" value={form.pic}
+              <FF label="PIC (Penanggung Jawab)" id="ld_pic" required>
+                <input id="ld_pic" type="text" value={form.pic}
                   onChange={e => sf('pic', e.target.value)}
                   placeholder="Nama PIC" className="input-premium" title="PIC"/>
               </FF>
-              <FF label="Tanggal Terbit / Efektif" id={`${uid}-issue_f`}>
-                <input id={`${uid}-issue_f`} type="date" value={form.issue_date}
+              <FF label="Tanggal Terbit / Efektif" id="ld_issue">
+                <input id="ld_issue" type="date" value={form.issue_date}
                   onChange={e => sf('issue_date', e.target.value)}
                   className="input-premium" title="Tanggal Terbit"/>
               </FF>
-              <FF label={expiryLabel} id={`${uid}-exp_f`} required={requireExpiry}>
-                <input id={`${uid}-exp_f`} type="date" value={form.expiry_date}
+              <FF label={expiryLabel} id="ld_exp" required={requireExpiry}>
+                <input id="ld_exp" type="date" value={form.expiry_date}
                   onChange={e => sf('expiry_date', e.target.value)}
                   className="input-premium" title={expiryLabel}/>
               </FF>
-              <FF label="Status Dokumen" id={`${uid}-docstat_f`} required>
-                <select id={`${uid}-docstat_f`} value={form.doc_status}
+              <FF label="Status Dokumen" id="ld_docstat" required>
+                <select id="ld_docstat" value={form.doc_status}
                   onChange={e => sf('doc_status', e.target.value)}
                   className="input-premium" title="Status Dokumen">
                   {DOC_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </FF>
-              <FF label="Klasifikasi Kerahasiaan" id={`${uid}-conf_f`} required>
-                <select id={`${uid}-conf_f`} value={form.confidentiality}
+              <FF label="Klasifikasi Kerahasiaan" id="ld_conf" required>
+                <select id="ld_conf" value={form.confidentiality}
                   onChange={e => sf('confidentiality', e.target.value)}
                   className="input-premium" title="Klasifikasi Kerahasiaan">
                   {CONFIDENTIALITY_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
@@ -539,19 +538,19 @@ export default function LegalDocPage({ config }: { config: LegalModuleConfig }) 
             </div>
             <SLabel>Lampiran</SLabel>
             <div className="detail-grid">
-              <FF label="URL File / Link Dokumen" id={`${uid}-url_f`}>
-                <input id={`${uid}-url_f`} type="url" value={form.file_url}
+              <FF label="URL File / Link Dokumen" id="ld_url">
+                <input id="ld_url" type="url" value={form.file_url}
                   onChange={e => sf('file_url', e.target.value)}
                   placeholder="https://drive.google.com/..." className="input-premium" title="URL File"/>
               </FF>
-              <FF label="Nama File" id={`${uid}-fname_f`}>
-                <input id={`${uid}-fname_f`} type="text" value={form.file_name}
+              <FF label="Nama File" id="ld_fname">
+                <input id="ld_fname" type="text" value={form.file_name}
                   onChange={e => sf('file_name', e.target.value)}
                   placeholder="contoh: Kontrak_2025.pdf" className="input-premium" title="Nama File"/>
               </FF>
             </div>
-            <FF label="Catatan" id={`${uid}-notes_f`}>
-              <textarea id={`${uid}-notes_f`} rows={2} value={form.notes}
+            <FF label="Catatan" id="ld_notes">
+              <textarea id="ld_notes" rows={2} value={form.notes}
                 onChange={e => sf('notes', e.target.value)}
                 placeholder="Catatan tambahan..." className="input-premium resize-y" title="Catatan"/>
             </FF>
