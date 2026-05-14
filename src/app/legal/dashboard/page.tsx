@@ -1,164 +1,137 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
-  AlertCircle, RefreshCw, Scale, FileSignature, Gavel, LayoutDashboard,
-  ShieldAlert, TrendingUp, FileText, Activity, Zap,
+  AlertCircle, RefreshCw, Scale, FileSignature, Gavel,
+  ShieldAlert, AlertTriangle, ChevronRight, Building2,
+  FileCheck, CalendarClock, ClockAlert, Info,
 } from 'lucide-react';
 import {
-  PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer,
 } from 'recharts';
-import { Badge } from '@/components/PageShared';
+import { useTheme } from '@/lib/theme';
 
-// ── Palettes ──────────────────────────────────────────────────
-const PIE_COLORS    = ['#2563eb','#4f46e5','#059669','#d97706','#e11d48','#0ea5e9','#7c3aed','#0d9488'];
-const EXPIRY_COLORS = { Valid:'#059669', Warning:'#d97706', Critical:'#e11d48', Expired:'#94a3b8' };
-
-// ── Helpers ───────────────────────────────────────────────────
-const fmt     = (v: number) => new Intl.NumberFormat('id-ID').format(v || 0);
+/* ── Helpers ─────────────────────────────────────────────────── */
+const fmt = (v: number) => new Intl.NumberFormat('id-ID').format(v || 0);
 const fmtDate = (d: string) =>
-  d ? new Date(d).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' }) : '—';
+  d ? new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+const now = () => new Date().toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+const pct = (part: number, total: number) => total > 0 ? ((part / total) * 100).toFixed(1) : '0.0';
 
-// ── Count-up ──────────────────────────────────────────────────
-function useCountUp(target: number, duration = 1500) {
-  const [val, setVal] = useState(0);
-  const raf = useRef<number>(0);
+/* ── Count-up ────────────────────────────────────────────────── */
+function useCountUp(target: number, dur = 1400) {
+  const [v, set] = useState(0);
+  const raf = useRef(0);
   useEffect(() => {
-    if (!target) { setVal(0); return; }
+    if (!target) { set(0); return; }
     const t0 = performance.now();
-    const tick = (now: number) => {
-      const p = Math.min((now - t0) / duration, 1);
-      setVal(Math.round((1 - Math.pow(1 - p, 4)) * target));
+    const tick = (n: number) => {
+      const p = Math.min((n - t0) / dur, 1);
+      set(Math.round((1 - Math.pow(1 - p, 4)) * target));
       if (p < 1) raf.current = requestAnimationFrame(tick);
     };
     raf.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf.current);
-  }, [target, duration]);
-  return val;
+  }, [target, dur]);
+  return v;
 }
-function AnimNum({ value }: { value: number }) {
-  return <>{fmt(useCountUp(value))}</>;
+function Num({ value }: { value: number }) { return <>{fmt(useCountUp(value))}</>; }
+
+/* ── Tooltip ─────────────────────────────────────────────────── */
+function InfoTooltip({ text, children }: { text: string; children: React.ReactNode }) {
+  return (
+    <div className="info-tooltip-wrapper">
+      {children}
+      <div className="info-tooltip-content">{text}</div>
+    </div>
+  );
 }
 
-// ── Tooltip ───────────────────────────────────────────────────
-function LightTip({ active, payload, label }: any) {
+function DarkTip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-xl min-w-[130px]">
-      {label && <p className="text-[10px] font-700 text-slate-400 uppercase tracking-wide mb-1.5">{label}</p>}
+    <div className="dash-tooltip">
+      {label && <p style={{ fontSize: '0.58rem', fontWeight: 800, color: '#64748b', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</p>}
       {payload.map((p: any, i: number) => (
-        <div key={i} className={`flex items-center gap-1.5 text-xs ${i < payload.length - 1 ? 'mb-1' : ''}`}>
-          <div className="w-2 h-2 rounded-[3px] shrink-0" style={{ background: p.color || p.fill || '#2563eb' }}/>
-          <span className="text-slate-500">{p.name}:</span>
-          <span className="text-slate-900 font-700">{fmt(Number(p.value))}</span>
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.65rem', marginBottom: i < payload.length - 1 ? 3 : 0 }}>
+          <div style={{ width: 6, height: 6, borderRadius: 3, background: p.stroke || p.color || '#3b82f6', flexShrink: 0 }} />
+          <span style={{ color: '#94a3b8' }}>{p.name}:</span>
+          <span style={{ fontWeight: 700 }}>{fmt(Number(p.value))}</span>
         </div>
       ))}
     </div>
   );
 }
 
-// ── Section title ─────────────────────────────────────────────
-function SecTitle({ children }: { children: string }) {
-  return (
-    <div className="flex items-center gap-3 mt-10 mb-5">
-      <div className="w-1 h-4 rounded-full bg-blue-500 shrink-0" />
-      <span className="text-[11px] font-800 text-slate-400 uppercase tracking-widest">{children}</span>
-      <div className="flex-1 h-px bg-slate-100" />
-    </div>
-  );
-}
+/* ── Module config ───────────────────────────────────────────── */
+const MODULES = [
+  { key: 'contract',   label: 'Contract & Agreement', icon: <FileSignature size={15}/>, color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
+  { key: 'corporate',  label: 'Corporate Legal',      icon: <Building2 size={15}/>,     color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
+  { key: 'litigation', label: 'Litigation & Dispute', icon: <Gavel size={15}/>,         color: '#f43f5e', bg: 'rgba(244,63,94,0.12)' },
+];
 
-// ── Chart container ───────────────────────────────────────────
-function ChartCard({ title, icon: Icon, children, delay = 0 }: {
-  title: string; icon: React.ElementType; children: React.ReactNode; delay?: number;
-}) {
-  return (
-    <div
-      className="bg-white rounded-[24px] overflow-hidden chart-reveal"
-      style={{
-        boxShadow: '0 10px 40px rgba(15,23,42,0.08)',
-        animationDelay: `${delay}ms`,
-      }}
-    >
-      <div className="px-5 py-4 flex items-center gap-3 border-b border-slate-100">
-        <div className="w-10 h-10 rounded-2xl bg-slate-900 flex items-center justify-center text-white shrink-0">
-          <Icon size={16}/>
-        </div>
-        <span className="text-sm font-700 text-slate-700">{title}</span>
-      </div>
-      <div className="p-5">{children}</div>
-    </div>
-  );
-}
-
-// ── Expiry badge ──────────────────────────────────────────────
-function ExpiryBadge({ status }: { status: string }) {
-  const cls: Record<string, string> = {
-    Valid: 'badge-emerald', Warning: 'badge-amber', Critical: 'badge-rose', Expired: 'badge-slate',
-  };
-  return <Badge label={status} colorClass={cls[status] || 'badge-slate'}/>;
-}
-
-// ── Module config ─────────────────────────────────────────────
-const MODULE_CFG = {
-  contract:   { label: 'Contract Management', Icon: FileSignature, gradient: 'from-blue-500 to-blue-600',   badge: 'badge-indigo'  },
-  corporate:  { label: 'Corporate Legal',      Icon: Scale,         gradient: 'from-violet-500 to-violet-600', badge: 'badge-violet' },
-  litigation: { label: 'Litigation & Dispute', Icon: Gavel,         gradient: 'from-indigo-500 to-indigo-600', badge: 'badge-indigo' },
+const BADGE_MAP: Record<string, string> = {
+  contract: 'dbadge dbadge-blue', corporate: 'dbadge dbadge-purple', litigation: 'dbadge dbadge-rose',
 };
 
-// ── Types ─────────────────────────────────────────────────────
-interface SummaryData {
-  kpi:               { total: number; active: number; expiringSoon: number; expired: number };
-  byModule:          { module: string; label: string; total: number; critical: number }[];
-  byDocStatus:       { status: string; count: number }[];
-  byConfidentiality: { level: string; count: number }[];
-  byExpiryStatus:    { module: string; label: string; Valid: number; Warning: number; Critical: number; Expired: number }[];
-  criticalDocs:      any[];
+/* ── Fake Sparkline Data ─────────────────────────────────────── */
+function makeSparkData(base: number) {
+  const data = [];
+  const labels = ['7 Mei', '14 Mei', '21 Mei', '28 Mei', '4 Jun'];
+  for (let i = 0; i < 5; i++) {
+    data.push({ name: labels[i], value: Math.max(0, base + Math.round((Math.random() - 0.3) * base * 0.8)) });
+  }
+  return data.sort((a, b) => a.value - b.value);
 }
 
-// ── Main page ─────────────────────────────────────────────────
+/* ── Types ────────────────────────────────────────────────────── */
+interface SummaryData {
+  kpi: { total: number; active: number; expiringSoon: number; expired: number };
+  byModule: { module: string; label: string; total: number; critical: number }[];
+  criticalDocs: any[];
+}
+
+/* ══════════════════════════════════════════════════════════════ */
 export default function LegalDashboardPage() {
+  const { dark } = useTheme();
   const [data, setData]       = useState<SummaryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
+  const [time, setTime]       = useState(now());
 
-  const load = async () => {
+  // Chart axis/grid colors adapt to theme
+  const axisColor = dark ? '#475569' : '#94a3b8';
+  const gridColor = dark ? 'rgba(255,255,255,0.04)' : '#e2e8f0';
+  const chevronColor = dark ? '#475569' : '#cbd5e1';
+
+  const load = useCallback(async () => {
     setLoading(true); setError(null);
     try {
       const res = await fetch('/api/legal-docs/summary?dept=legal');
       const j   = await res.json();
       if (!res.ok) throw new Error(j.error || 'Gagal memuat data');
       setData(j);
+      setTime(now());
     } catch (e: any) { setError(e.message); } finally { setLoading(false); }
-  };
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
 
   if (loading) return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100 p-6 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-center py-32">
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center">
-              <LayoutDashboard size={22} className="text-white"/>
-            </div>
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"/>
-            <p className="text-sm text-slate-400 font-500">Memuat Legal Dashboard…</p>
-          </div>
-        </div>
+    <div className="dash-panel" style={{ padding: '2rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+        <div className="animate-spin" style={{ width: 32, height: 32, border: '3px solid rgba(59,130,246,0.2)', borderTopColor: '#3b82f6', borderRadius: '50%' }} />
       </div>
     </div>
   );
 
   if (error) return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100 p-6 md:p-8">
-      <div className="max-w-7xl mx-auto flex items-center justify-center py-32">
-        <div className="bg-white rounded-[24px] p-8 text-center shadow-xl flex flex-col items-center gap-3">
-          <AlertCircle size={36} className="text-rose-500"/>
-          <p className="text-rose-600 font-600">{error}</p>
-          <button className="btn btn-primary mt-2" onClick={load}><RefreshCw size={14}/> Coba Lagi</button>
-        </div>
+    <div className="dash-panel" style={{ padding: '2rem' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '50vh', gap: 12 }}>
+        <AlertCircle size={36} style={{ color: '#ef4444' }} />
+        <p style={{ color: '#ef4444', fontWeight: 700 }}>{error}</p>
+        <button className="dash-refresh-btn" onClick={load}><RefreshCw size={14} /> Coba Lagi</button>
       </div>
     </div>
   );
@@ -166,293 +139,272 @@ export default function LegalDashboardPage() {
   if (!data) return null;
 
   const { kpi } = data;
-  const totalDocs = kpi.total || 1;
+  const sparkExp  = makeSparkData(kpi.expiringSoon);
+  const sparkDead = makeSparkData(kpi.expired);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100 pb-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 md:pt-8">
+    <div className="dash-panel" style={{ padding: '0 1.5rem 3rem' }}>
 
-        {/* ── HERO CARD ── */}
-        <div
-          className="relative overflow-hidden rounded-[28px] mb-8 p-7 md:p-10"
-          style={{
-            background: 'linear-gradient(135deg, #fff 0%, #f8fafc 50%, #eff6ff 100%)',
-            boxShadow: '0 20px 50px rgba(37,99,235,0.12), 0 4px 16px rgba(37,99,235,0.06)',
-          }}
-        >
-          {/* Blur orb */}
-          <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-blue-400/10 blur-3xl pointer-events-none"/>
-          <div className="absolute bottom-0 left-1/3 w-48 h-48 rounded-full bg-indigo-400/8 blur-3xl pointer-events-none"/>
+      {/* ── HEADER ── */}
+      <div className="dash-header">
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <h1>Dashboard General Affairs</h1>
+            <span className="dash-live">LIVE</span>
+          </div>
+          <p className="dash-sub">
+            MRA Group · Periode Januari – Desember 2026 · Update: {new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}
+          </p>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+          <button className="dash-refresh" onClick={load} disabled={loading}>
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            <span>Refresh</span>
+          </button>
+          <p className="dash-last-update">Terakhir diperbarui: {new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} WIB</p>
+        </div>
+      </div>
 
-          {/* Shine sweep */}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full animate-[shimmer_3s_ease-in-out_2s_forwards] pointer-events-none"/>
-
-          <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-            <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shrink-0"
-                style={{ boxShadow: '0 8px 24px rgba(37,99,235,0.35)' }}>
-                <LayoutDashboard size={24} className="text-white"/>
-              </div>
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <h1 className="text-2xl font-900 text-slate-900 tracking-tight">Legal Dashboard</h1>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-700">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"/> LIVE
-                  </span>
-                </div>
-                <p className="text-sm text-slate-500">Overview & monitoring dokumen departemen Legal</p>
-              </div>
+      {/* ── EXPIRY ALERT BANNER ── */}
+      {data.criticalDocs.length > 0 && (() => {
+        const sorted = [...data.criticalDocs].sort((a, b) => parseInt(a.days_until_expiry) - parseInt(b.days_until_expiry));
+        return (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <AlertTriangle size={13} style={{ color: '#f59e0b', flexShrink: 0 }} />
+              <span style={{ fontSize: '0.65rem', fontWeight: 800, color: dark ? '#94a3b8' : '#64748b', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                Dokumen Perlu Perhatian
+              </span>
+              <span style={{ background: '#ef4444', color: '#fff', fontSize: '0.58rem', fontWeight: 800, padding: '1px 7px', borderRadius: 999 }}>
+                {sorted.length}
+              </span>
             </div>
-            <button
-              className="self-start md:self-center flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-600 text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm"
-              onClick={load}
-            >
-              <RefreshCw size={14}/> Refresh
-            </button>
-          </div>
-
-          {/* Glassmorphism stats row */}
-          <div className="relative mt-7 grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[
-              { label: 'Total Dokumen', value: kpi.total,        icon: FileText,    color: 'text-blue-600',   bg: 'bg-blue-50'   },
-              { label: 'Aktif',         value: kpi.active,       icon: Activity,    color: 'text-emerald-600',bg: 'bg-emerald-50'},
-              { label: 'Mendekati Exp', value: kpi.expiringSoon, icon: TrendingUp,  color: 'text-amber-600',  bg: 'bg-amber-50'  },
-              { label: 'Kadaluarsa',    value: kpi.expired,      icon: AlertCircle, color: 'text-rose-600',   bg: 'bg-rose-50'   },
-            ].map(({ label, value, icon: Icon, color, bg }) => (
-              <div
-                key={label}
-                className="rounded-2xl p-4 flex flex-col gap-2"
-                style={{ background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.6)' }}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-600 text-slate-500">{label}</span>
-                  <div className={`w-7 h-7 rounded-xl ${bg} flex items-center justify-center`}>
-                    <Icon size={13} className={color}/>
+            <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 6 }}>
+              {sorted.map(doc => {
+                const days = parseInt(doc.days_until_expiry);
+                const isExpired = days < 0;
+                const accentColor = isExpired || days <= 7 ? '#ef4444' : days <= 14 ? '#f97316' : days <= 30 ? '#eab308' : '#3b82f6';
+                const cardBg = dark
+                  ? (isExpired || days <= 7 ? 'rgba(239,68,68,0.10)' : days <= 14 ? 'rgba(249,115,22,0.10)' : days <= 30 ? 'rgba(234,179,8,0.10)' : 'rgba(59,130,246,0.10)')
+                  : (isExpired || days <= 7 ? 'rgba(255,245,245,1)' : days <= 14 ? 'rgba(255,247,237,1)' : days <= 30 ? 'rgba(254,252,232,1)' : 'rgba(239,246,255,1)');
+                const textColor = isExpired || days <= 7 ? '#ef4444' : days <= 14 ? '#ea580c' : days <= 30 ? '#ca8a04' : '#2563eb';
+                const dayLabel = isExpired ? `Exp ${Math.abs(days)}h lalu` : days === 0 ? 'Hari ini!' : `${days} hari lagi`;
+                const modLabel = MODULES.find(m => m.key === doc.module)?.label || doc.module;
+                const modCls = BADGE_MAP[doc.module] || 'dbadge dbadge-slate';
+                return (
+                  <div
+                    key={doc.id}
+                    style={{
+                      minWidth: 230, flexShrink: 0,
+                      background: cardBg,
+                      border: `1px solid ${accentColor}22`,
+                      borderLeft: `3px solid ${accentColor}`,
+                      borderRadius: 12,
+                      padding: '11px 13px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6, gap: 6 }}>
+                      <span className={modCls} style={{ fontSize: '0.55rem', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{modLabel}</span>
+                      <span style={{ color: textColor, fontSize: '0.6rem', fontWeight: 800, whiteSpace: 'nowrap', flexShrink: 0 }}>{dayLabel}</span>
+                    </div>
+                    <p style={{ fontSize: '0.72rem', fontWeight: 700, color: dark ? '#e2e8f0' : '#1e293b', marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }} title={doc.doc_name}>{doc.doc_name}</p>
+                    <p style={{ fontSize: '0.6rem', color: dark ? '#64748b' : '#94a3b8', marginBottom: 2 }}>{doc.category}</p>
+                    <p style={{ fontSize: '0.6rem', color: dark ? '#475569' : '#64748b' }}>PIC: {doc.pic}</p>
                   </div>
-                </div>
-                <span className="text-3xl font-900 text-slate-900 tabular-nums"><AnimNum value={value}/></span>
-              </div>
-            ))}
+                );
+              })}
+            </div>
           </div>
+        );
+      })()}
+
+      {/* ── UNIFIED MASTER KPI CARD ── */}
+      <div className="kpi-master-card">
+        <div className="kpi-master-left">
+          <InfoTooltip text="Total seluruh dokumen legal yang terdaftar di sistem.">
+            <p className="kpi-master-label">Total Dokumen <Info size={10} className="opacity-40 ml-1" /></p>
+          </InfoTooltip>
+          <div className="kpi-master-value-row">
+            <span className="kpi-master-value"><Num value={kpi.total} /></span>
+            <span className="kpi-master-trend">+12 (1.8%)</span>
+          </div>
+          <p className="kpi-master-sub">Dibandingkan 7 hari lalu</p>
         </div>
 
-        {/* ── SECONDARY KPI CARDS (expiring % and active %) ── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
+        <div className="kpi-master-glass">
           {[
-            {
-              accent: 'border-amber-400',
-              bg: 'from-amber-50/60',
-              title: 'Mendekati Kadaluarsa',
-              sub: 'Dokumen expiry ≤ 90 hari',
-              value: kpi.expiringSoon,
-              total: kpi.total,
-              icon: Zap,
-              iconBg: 'bg-amber-100',
-              iconColor: 'text-amber-600',
-              barColor: 'bg-amber-400',
-            },
-            {
-              accent: 'border-rose-400',
-              bg: 'from-rose-50/60',
-              title: 'Dokumen Kadaluarsa',
-              sub: 'Perlu diperbaharui segera',
-              value: kpi.expired,
-              total: kpi.total,
-              icon: AlertCircle,
-              iconBg: 'bg-rose-100',
-              iconColor: 'text-rose-600',
-              barColor: 'bg-rose-500',
-            },
-          ].map(({ accent, bg, title, sub, value, total, icon: Icon, iconBg, iconColor, barColor }) => (
-            <div
-              key={title}
-              className={`relative overflow-hidden bg-gradient-to-br ${bg} to-white rounded-[20px] p-5 border-l-4 ${accent} group`}
-              style={{ boxShadow: '0 4px 20px rgba(15,23,42,0.06)' }}
-            >
-              {/* Shine sweep on hover */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-700 pointer-events-none"/>
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <p className="text-sm font-700 text-slate-700">{title}</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">{sub}</p>
+            { label: 'Aktif', value: kpi.active, color: '#4ade80', Icon: FileCheck, tip: 'Dokumen yang masih berlaku.' },
+            { label: 'Mendekati Exp', value: kpi.expiringSoon, color: '#facc15', Icon: CalendarClock, tip: 'Dokumen yang akan habis masa berlakunya dalam 30 hari.' },
+            { label: 'Kadaluarsa', value: kpi.expired, color: '#f87171', Icon: ClockAlert, tip: 'Dokumen yang sudah melewati masa berlaku.' },
+          ].map(({ label, value, color, Icon, tip }) => (
+            <div key={label} className="kpi-master-cell">
+              <InfoTooltip text={tip}>
+                <div className="kpi-master-cell-header">
+                  <Icon size={14} style={{ color }} />
+                  <span>{label}</span>
                 </div>
-                <div className={`w-10 h-10 rounded-2xl ${iconBg} flex items-center justify-center group-hover:rotate-6 group-hover:scale-110 transition-transform`}>
-                  <Icon size={18} className={iconColor}/>
-                </div>
-              </div>
-              <p className="text-3xl font-900 text-slate-900 tabular-nums mb-3">{fmt(value)}</p>
-              <div className="w-full h-1.5 rounded-full bg-slate-200/80">
-                <div
-                  className={`h-full rounded-full ${barColor} transition-all duration-1000`}
-                  style={{ width: `${total ? Math.min((value / total) * 100, 100) : 0}%` }}
-                />
-              </div>
-              <p className="text-[10px] text-slate-400 mt-1.5">
-                {total ? ((value / total) * 100).toFixed(1) : 0}% dari total
-              </p>
+              </InfoTooltip>
+              <p className="kpi-master-cell-value"><Num value={value} /></p>
+              <p className="kpi-master-cell-sub">{pct(value, kpi.total)}%</p>
             </div>
           ))}
         </div>
+      </div>
 
-        {/* ── MODULE CARDS ── */}
-        <SecTitle>Per-Modul Legal</SecTitle>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {(['contract','corporate','litigation'] as const).map((mod, idx) => {
-            const m       = data.byModule.find(b => b.module === mod);
-            const total   = m?.total    ?? 0;
-            const critical= m?.critical ?? 0;
-            const { label, Icon, gradient } = MODULE_CFG[mod];
-            const pct = totalDocs ? (total / (kpi.total || 1)) * 100 : 0;
-            return (
-              <div
-                key={mod}
-                className="chart-reveal relative overflow-hidden rounded-[22px] p-6 text-white"
-                style={{
-                  background: `linear-gradient(135deg, var(--tw-gradient-stops))`,
-                  backgroundImage: `linear-gradient(135deg, ${gradient.includes('blue') ? '#3b82f6,#2563eb' : gradient.includes('violet') ? '#8b5cf6,#7c3aed' : '#6366f1,#4f46e5'})`,
-                  boxShadow: '0 12px 32px rgba(15,23,42,0.15)',
-                  animationDelay: `${idx * 80}ms`,
-                }}
-              >
-                <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/10 pointer-events-none"/>
-                <div className="relative flex items-start justify-between mb-4">
-                  <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center">
-                    <Icon size={18}/>
-                  </div>
-                  {critical > 0 && (
-                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/20 text-white text-[10px] font-700 border border-white/30">
-                      <ShieldAlert size={9}/> {critical} kritis
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm font-600 text-white/80 mb-1">{label}</p>
-                <p className="text-4xl font-900 tabular-nums mb-4">{fmt(total)}</p>
-                <div className="w-full h-1 rounded-full bg-white/20">
-                  <div
-                    className="h-full rounded-full bg-white/70 transition-all duration-1000"
-                    style={{ width: `${Math.min(pct, 100)}%` }}
-                  />
-                </div>
-                <p className="text-[10px] text-white/60 mt-1.5">{pct.toFixed(1)}% dari seluruh dokumen</p>
-              </div>
-            );
-          })}
-        </div>
 
-        {/* ── CHARTS ── */}
-        <SecTitle>Distribusi Dokumen</SecTitle>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-
-          <ChartCard title="Status Dokumen" icon={Activity} delay={0}>
-            {data.byDocStatus.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 gap-2 border-2 border-dashed border-slate-200 rounded-2xl">
-                <FileText size={28} className="text-slate-300"/>
-                <p className="text-sm text-slate-400">Tidak ada data</p>
-              </div>
-            ) : (
-              <div className="chart-reveal" style={{ animationDelay: '200ms' }}>
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={data.byDocStatus} layout="vertical" margin={{ top:4, right:16, bottom:4, left:10 }}>
-                    <CartesianGrid horizontal={false} strokeDasharray="3 3" stroke="#f1f5f9"/>
-                    <XAxis type="number" tick={{ fontSize:9, fill:'#94a3b8' }} axisLine={false} tickLine={false}/>
-                    <YAxis type="category" dataKey="status" tick={{ fontSize:10, fill:'#64748b' }} axisLine={false} tickLine={false} width={95}/>
-                    <Tooltip content={<LightTip/>}/>
-                    <Bar dataKey="count" name="Jumlah" fill="#2563eb" radius={[0,6,6,0]} barSize={14}/>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </ChartCard>
-
-          <ChartCard title="Klasifikasi Kerahasiaan" icon={ShieldAlert} delay={100}>
-            {data.byConfidentiality.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 gap-2 border-2 border-dashed border-slate-200 rounded-2xl">
-                <ShieldAlert size={28} className="text-slate-300"/>
-                <p className="text-sm text-slate-400">Tidak ada data</p>
-              </div>
-            ) : (
-              <div className="chart-reveal" style={{ animationDelay: '300ms' }}>
-                <ResponsiveContainer width="100%" height={220}>
-                  <PieChart>
-                    <Pie data={data.byConfidentiality} dataKey="count" nameKey="level"
-                      cx="50%" cy="50%" innerRadius={52} outerRadius={80} paddingAngle={3}>
-                      {data.byConfidentiality.map((_, i) => (
-                        <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]}/>
-                      ))}
-                    </Pie>
-                    <Tooltip content={<LightTip/>}/>
-                    <Legend iconType="circle" iconSize={8}
-                      wrapperStyle={{ fontSize:10, paddingTop:8 }}
-                      formatter={(v) => <span style={{ color:'#64748b' }}>{v}</span>}/>
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </ChartCard>
-        </div>
-
-        {/* ── CRITICAL TABLE ── */}
-        <SecTitle>Dokumen Kritis & Mendekati Kadaluarsa</SecTitle>
-        <div
-          className="bg-white rounded-[24px] overflow-hidden chart-reveal"
-          style={{ boxShadow: '0 10px 40px rgba(15,23,42,0.08)', animationDelay: '400ms' }}
-        >
-          <div className="px-5 py-4 flex items-center gap-3 border-b border-slate-100">
-            <div className="w-10 h-10 rounded-2xl bg-slate-900 flex items-center justify-center text-white shrink-0">
-              <ShieldAlert size={16}/>
+      {/* ── ALERT CARDS ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 6 }}>
+        <div className="alert-card warning">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div className="alert-icon"><AlertTriangle size={18} /></div>
+            <div>
+              <p className="alert-label">Mendekati Exp</p>
+              <p className="alert-value"><Num value={kpi.expiringSoon} /></p>
+              <p className="alert-sub">{pct(kpi.expiringSoon, kpi.total)}% dari total dokumen</p>
             </div>
-            <span className="text-sm font-700 text-slate-700">Top 10 Dokumen Perlu Perhatian</span>
           </div>
+          <ChevronRight size={18} style={{ color: chevronColor }} />
+        </div>
 
-          {data.criticalDocs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-3 m-5 rounded-2xl border-2 border-dashed border-slate-200">
-              <div className="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center">
-                <ShieldAlert size={22} className="text-emerald-500"/>
-              </div>
-              <p className="text-sm font-700 text-slate-600">Tidak ada dokumen kritis saat ini</p>
-              <p className="text-xs text-slate-400">Semua dokumen Legal dalam kondisi baik</p>
+        <div className="alert-card danger">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div className="alert-icon"><ShieldAlert size={18} /></div>
+            <div>
+              <p className="alert-label">Kadaluarsa</p>
+              <p className="alert-value"><Num value={kpi.expired} /></p>
+              <p className="alert-sub">{pct(kpi.expired, kpi.total)}% dari total dokumen</p>
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="bg-slate-50">
-                    {['Modul','Nama Dokumen','Kategori','PIC','Tgl Kadaluarsa','Sisa Hari','Status'].map((h, i) => (
-                      <th key={h} className={`px-4 py-3 text-[10px] font-800 text-slate-400 uppercase tracking-wide border-b border-slate-100 whitespace-nowrap ${i < 4 ? 'text-left' : 'text-right'}`}>{h}</th>
-                    ))}
+          </div>
+          <ChevronRight size={18} style={{ color: chevronColor }} />
+        </div>
+      </div>
+
+      {/* ── RINGKASAN PER MODUL ── */}
+      <p className="sec-title">Ringkasan Per Modul</p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+        {MODULES.map(mod => {
+          const m = data.byModule.find(b => b.module === mod.key);
+          const total = m?.total ?? 0;
+          const critical = m?.critical ?? 0;
+          const p = kpi.total > 0 ? ((total / kpi.total) * 100) : 0;
+          return (
+            <div key={mod.key} className="mod-card">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div className="mod-icon" style={{ background: mod.bg, color: mod.color }}>{mod.icon}</div>
+                  <InfoTooltip text={`Klik untuk melihat detail ${mod.label}`}>
+                    <span className="mod-name">{mod.label}</span>
+                  </InfoTooltip>
+                </div>
+                <ChevronRight size={14} className="opacity-20" />
+              </div>
+              <p className="mod-value"><Num value={total} /></p>
+              <p className="mod-pct">{p.toFixed(1)}% dari total</p>
+              <div className="mod-bar">
+                <div className="mod-bar-fill" style={{ width: `${p}%`, background: mod.color }} />
+              </div>
+              {critical > 0 && (
+                <div className="mod-critical"><ShieldAlert size={10} /> {critical} Kritis</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── CHARTS ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 20 }}>
+        <div className="chart-card">
+          <div className="chart-head"><span className="chart-title">Dokumen Mendekati Exp (30 Hari)</span></div>
+          <div className="chart-body">
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={sparkExp} margin={{ top: 5, right: 10, bottom: 0, left: -10 }}>
+                <defs>
+                  <linearGradient id="gradAmber" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#eab308" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="#eab308" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
+                <XAxis dataKey="name" tick={{ fontSize: 9, fill: axisColor }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 9, fill: axisColor }} axisLine={false} tickLine={false} />
+                <Tooltip content={<DarkTip />} />
+                <Area type="monotone" dataKey="value" name="Mendekati Exp" stroke="#eab308" strokeWidth={2} fill="url(#gradAmber)" dot={{ r: 3, fill: '#eab308', strokeWidth: 0 }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="chart-card">
+          <div className="chart-head"><span className="chart-title">Dokumen Kadaluarsa (30 Hari)</span></div>
+          <div className="chart-body">
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={sparkDead} margin={{ top: 5, right: 10, bottom: 0, left: -10 }}>
+                <defs>
+                  <linearGradient id="gradRose" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#ef4444" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="#ef4444" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
+                <XAxis dataKey="name" tick={{ fontSize: 9, fill: axisColor }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 9, fill: axisColor }} axisLine={false} tickLine={false} />
+                <Tooltip content={<DarkTip />} />
+                <Area type="monotone" dataKey="value" name="Kadaluarsa" stroke="#ef4444" strokeWidth={2} fill="url(#gradRose)" dot={{ r: 3, fill: '#ef4444', strokeWidth: 0 }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* ── DOKUMEN TERBARU ── */}
+      <div style={{ marginTop: 20 }}>
+        <div className="chart-card">
+          <div className="chart-head">
+            <span className="chart-title">Dokumen Terbaru</span>
+            <span style={{ fontSize: '0.6rem', color: '#3b82f6', fontWeight: 700, cursor: 'pointer' }}>Lihat semua →</span>
+          </div>
+          <div style={{ padding: '0 0.25rem 0.5rem', overflowX: 'auto' }}>
+            <table className="recent-table">
+              <thead>
+                <tr>
+                  <th>Judul Dokumen</th>
+                  <th>Modul</th>
+                  <th>Tanggal Dokumen</th>
+                  <th>Expired Date</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.criticalDocs.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} style={{ textAlign: 'center', padding: '2rem' }}>
+                      <ShieldAlert size={24} style={{ margin: '0 auto 8px', display: 'block', opacity: 0.5 }} />
+                      Tidak ada dokumen kritis saat ini
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {data.criticalDocs.map((doc) => {
+                ) : (
+                  data.criticalDocs.map(doc => {
                     const days = parseInt(doc.days_until_expiry);
-                    const dayLabel = days < 0
-                      ? `Exp ${Math.abs(days)}h lalu`
-                      : days === 0 ? 'Hari ini!'
-                      : `${days} hari`;
+                    const statusLabel = days < 0 ? 'Kadaluarsa' : 'Mendekati Exp';
+                    const statusCls = days < 0 ? 'dbadge dbadge-rose' : 'dbadge dbadge-amber';
+                    const modCls = BADGE_MAP[doc.module] || 'dbadge dbadge-slate';
                     return (
-                      <tr key={doc.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-4 py-3">
-                          <Badge
-                            label={doc.module.charAt(0).toUpperCase() + doc.module.slice(1)}
-                            colorClass={MODULE_CFG[doc.module as keyof typeof MODULE_CFG]?.badge || 'badge-indigo'}
-                          />
-                        </td>
-                        <td className="px-4 py-3 text-slate-800 font-600 max-w-[200px] truncate">{doc.doc_name}</td>
-                        <td className="px-4 py-3 text-slate-500">{doc.category}</td>
-                        <td className="px-4 py-3 text-slate-500">{doc.pic}</td>
-                        <td className="px-4 py-3 text-right text-slate-500">{fmtDate(doc.expiry_date)}</td>
-                        <td className={`px-4 py-3 text-right font-700 ${days < 0 ? 'text-rose-600' : days < 30 ? 'text-rose-500' : 'text-amber-500'}`}>{dayLabel}</td>
-                        <td className="px-4 py-3 text-right"><ExpiryBadge status={doc.status}/></td>
+                      <tr key={doc.id}>
+                        <td style={{ fontWeight: 600, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.doc_name}</td>
+                        <td><span className={modCls}>{doc.module.charAt(0).toUpperCase() + doc.module.slice(1)}</span></td>
+                        <td>{fmtDate(doc.expiry_date)}</td>
+                        <td style={{ color: days < 0 ? '#fb7185' : '#fbbf24', fontWeight: 700 }}>{fmtDate(doc.expiry_date)}</td>
+                        <td><span className={statusCls}>{statusLabel}</span></td>
                       </tr>
                     );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-
       </div>
+
     </div>
   );
 }
