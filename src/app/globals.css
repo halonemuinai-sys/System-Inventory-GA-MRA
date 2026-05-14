@@ -824,12 +824,6 @@ textarea {
   100% { transform: translateX(200%); }
 }
 
-@keyframes reveal-right {
-  from { clip-path: inset(0 100% 0 0); }
-  to   { clip-path: inset(0 0 0 0); }
-}
-.chart-reveal { animation: reveal-right 1.2s cubic-bezier(0.4,0,0.2,1) forwards; }
-
 /* ════════════════════════════════════════════════════════════
    DARK MODE  —  toggled via html.dark class
    Deep space theme with glow accents & glassmorphism
