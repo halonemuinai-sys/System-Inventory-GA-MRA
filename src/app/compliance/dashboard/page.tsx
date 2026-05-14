@@ -157,12 +157,9 @@ export default function ComplianceDashboardPage() {
       {/* ── HEADER ── */}
       <div className="dash-header">
         <h1>Compliance Department</h1>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span className="dash-live">◆ LIVE</span>
-            <button className="dash-refresh-btn" onClick={load}><RefreshCw size={11} /> Refresh</button>
-          </div>
-          <p className="dash-timestamp">Terakhir diperbarui: {time} WIB</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span className="dash-live">◆ LIVE</span>
+          <p className="dash-timestamp">Update: {time} WIB</p>
         </div>
       </div>
 
