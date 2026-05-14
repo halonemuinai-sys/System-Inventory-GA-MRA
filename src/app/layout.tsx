@@ -1,16 +1,16 @@
 'use client';
 
 import './globals.css';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { logout } from './login/actions';
 import {
   LayoutDashboard, Package, Truck, HardDrive,
   Users, ShieldCheck, FileText, Wrench, BarChart3,
   Settings, LogOut, Bell, ChevronRight, ChevronLeft, Sun, Moon, Barcode, Menu, Database,
   FileSignature, Building2, BadgeCheck, ClipboardList, BookOpen,
-  Gavel, UserCheck, Landmark, FlaskConical,
+  Gavel, UserCheck, Landmark, FlaskConical, AlertTriangle, X,
 } from 'lucide-react';
 import { ThemeProvider, useTheme } from '@/lib/theme';
 
@@ -109,27 +109,136 @@ function NavThemeBtn() {
   );
 }
 
+// ── Notification item type ────────────────────────────────────
+interface NotifItem {
+  id: number;
+  module: string;
+  doc_name: string;
+  category: string;
+  expiry_date: string;
+  pic: string;
+  status: 'Expired' | 'Critical' | 'Warning';
+  days_until_expiry: number;
+}
+
+const MODULE_LABELS: Record<string, string> = {
+  contract: 'Contract', corporate: 'Corporate', litigation: 'Litigation',
+  license: 'License', monitoring: 'Compliance', sop: 'SOP',
+  hr_compliance: 'HR', tax_finance: 'Tax', product_regulatory: 'Product',
+};
+
+function fmtDate(d: string) {
+  return d ? new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+}
+
+// ── Bell notification panel ───────────────────────────────────
+function NotifPanel({ items, total, onClose }: { items: NotifItem[]; total: number; onClose: () => void }) {
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) onClose();
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [onClose]);
+
+  return (
+    <div
+      ref={panelRef}
+      className="notif-panel"
+    >
+      {/* Header */}
+      <div className="notif-panel-header">
+        <div className="flex items-center gap-2">
+          <Bell size={14} className="text-blue" />
+          <span className="text-xs font-800 text-text">Notifikasi Dokumen</span>
+          {total > 0 && (
+            <span className="bg-rose text-white text-xxxs font-800 px-1.5 py-0.5 rounded-full">{total}</span>
+          )}
+        </div>
+        <button type="button" onClick={onClose} title="Tutup" className="p-1 rounded-lg hover:bg-surface-2 transition-colors text-text-3 hover:text-text">
+          <X size={13} />
+        </button>
+      </div>
+
+      {/* Body */}
+      <div className="notif-panel-body">
+        {items.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 gap-3">
+            <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center">
+              <Bell size={20} className="text-emerald-500" />
+            </div>
+            <p className="text-xs font-600 text-text-2">Semua dokumen dalam kondisi baik</p>
+            <p className="text-xxs text-text-3">Tidak ada dokumen kritis atau kadaluarsa</p>
+          </div>
+        ) : (
+          <div className="flex flex-col">
+            {items.map((item) => {
+              const days = Number(item.days_until_expiry);
+              const isExp = days < 0;
+              const accent = isExp ? 'var(--rose)' : days <= 7 ? 'var(--rose)' : days <= 30 ? '#f97316' : '#eab308';
+              const badgeCls = isExp || days <= 7 ? 'notif-badge-red' : days <= 30 ? 'notif-badge-orange' : 'notif-badge-yellow';
+              const dayLabel = isExp ? `${Math.abs(days)}h lalu` : days === 0 ? 'Hari ini' : `${days} hari lagi`;
+              return (
+                <div key={item.id} className="notif-item" style={{ borderLeftColor: accent }}>
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <span className="text-xxs font-700 text-text-3 uppercase tracking-wide">
+                      {MODULE_LABELS[item.module] ?? item.module} · {item.category}
+                    </span>
+                    <span className={`notif-day-badge ${badgeCls}`}>{dayLabel}</span>
+                  </div>
+                  <p className="text-xs font-700 text-text leading-snug mb-1 truncate" title={item.doc_name}>{item.doc_name}</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xxs text-text-3">PIC: {item.pic}</span>
+                    <span className="text-xxs text-text-3">{fmtDate(item.expiry_date)}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      {items.length > 0 && (
+        <div className="notif-panel-footer">
+          <Link href="/legal/dashboard" className="notif-footer-link" onClick={onClose}>
+            Lihat Legal Dashboard →
+          </Link>
+          <Link href="/compliance/dashboard" className="notif-footer-link" onClick={onClose}>
+            Lihat Compliance Dashboard →
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Shell (uses theme) ─────────────────────────────────────────
 function Shell({ children }: { children: React.ReactNode }) {
   const pathname  = usePathname();
-  const router    = useRouter();
   const [sidebarOpen, setSidebarOpen]       = useState(false);
   const [isCollapsed, setIsCollapsed]       = useState(false);
-  const [alertTotal, setAlertTotal]     = useState(0);
-  const [alertByModule, setAlertByModule] = useState<Record<string, number>>({});
+  const [alertTotal, setAlertTotal]         = useState(0);
+  const [alertByModule, setAlertByModule]   = useState<Record<string, number>>({});
+  const [notifItems, setNotifItems]         = useState<NotifItem[]>([]);
+  const [notifOpen, setNotifOpen]           = useState(false);
 
   // Close sidebar when navigating on mobile
   useEffect(() => {
     setSidebarOpen(false);
+    setNotifOpen(false);
   }, [pathname]);
 
-  // Fetch legal-docs notification counts
+  // Fetch legal-docs notification counts + items
   useEffect(() => {
     fetch('/api/legal-docs/notifications')
       .then(r => r.json())
       .then(d => {
         setAlertTotal(d.total || 0);
         setAlertByModule(d.perModule || {});
+        setNotifItems(d.items || []);
       })
       .catch(() => {});
   }, [pathname]);
@@ -243,14 +352,24 @@ function Shell({ children }: { children: React.ReactNode }) {
 
           <div className="nav-right ml-auto">
             <NavThemeBtn />
-            <div
-              className="relative cursor-pointer"
-              aria-label="Notifications"
-              title={alertTotal > 0 ? `${alertTotal} dokumen perlu perhatian` : 'Notifications'}
-              onClick={() => router.push('/compliance/licenses')}
-            >
-              <Bell size={17} className={alertTotal > 0 ? 'text-rose' : 'text-text-3'} />
-              {alertTotal > 0 && <div className="notif-badge" />}
+            <div className="relative">
+              <button
+                type="button"
+                title={alertTotal > 0 ? `${alertTotal} dokumen perlu perhatian` : 'Notifications'}
+                aria-label="Notifications"
+                className="relative p-1 rounded-lg hover:bg-surface-2 transition-colors"
+                onClick={() => setNotifOpen(o => !o)}
+              >
+                <Bell size={17} className={alertTotal > 0 ? 'text-rose animate-[bell-ring_1s_ease-in-out_infinite]' : 'text-text-3'} />
+                {alertTotal > 0 && <div className="notif-badge" />}
+              </button>
+              {notifOpen && (
+                <NotifPanel
+                  items={notifItems}
+                  total={alertTotal}
+                  onClose={() => setNotifOpen(false)}
+                />
+              )}
             </div>
             <span className="nav-version">v1.0.0</span>
             <div className="nav-avatar" aria-label="User Avatar">GA</div>
