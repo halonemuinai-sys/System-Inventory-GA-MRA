@@ -376,7 +376,6 @@ function Shell({ children }: { children: React.ReactNode }) {
                 />
               )}
             </div>
-            <span className="nav-version">v1.0.0</span>
             <div className="nav-avatar" aria-label="User Avatar">GA</div>
           </div>
         </nav>
