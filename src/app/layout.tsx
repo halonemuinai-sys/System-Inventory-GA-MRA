@@ -165,7 +165,7 @@ function Shell({ children }: { children: React.ReactNode }) {
                 MRA Inventory
               </p>
               <p className="text-xs-bold text-blue mt-0.5">
-                General Affairs
+                Corporate Support
               </p>
             </div>
           )}
@@ -264,7 +264,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-        <title>MRA Inventory — General Affairs System</title>
+        <title>MRA Inventory — Corporate Support System</title>
       </head>
       <body>
         <ThemeProvider>
