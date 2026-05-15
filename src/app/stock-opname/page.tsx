@@ -359,7 +359,7 @@ export default function StockOpnamePage() {
 
       {/* Create Modal */}
       {showCreate && (
-        <ModalShell title="Buat Sesi Stock Opname Baru" onClose={() => setShowCreate(false)}>
+        <ModalShell title="Buat Sesi Stock Opname Baru" onClose={() => setShowCreate(false)} closeOnClickOutside={false}>
           <FormError msg={formErr} />
           <FF label="Nama Sesi" required>
             <input

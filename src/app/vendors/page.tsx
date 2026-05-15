@@ -496,6 +496,7 @@ export default function VendorsPage() {
           title={editVendor ? `Edit Vendor — ${editVendor.vendor_name}` : 'Tambah Vendor Baru'}
           onClose={closeForm}
           size="lg"
+          closeOnClickOutside={false}
         >
           <div className="flex flex-col gap-4">
             <FormError msg={formError} />

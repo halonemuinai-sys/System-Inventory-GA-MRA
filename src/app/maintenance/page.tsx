@@ -260,7 +260,7 @@ export default function MaintenancePage() {
 
       {/* Add/Edit */}
       {(showAdd||editRow)&&(
-        <ModalShell title={editRow?`Edit Maintenance`:'Tambah Layanan Baru'} onClose={closeForm} size="md">
+        <ModalShell title={editRow?`Edit Maintenance`:'Tambah Layanan Baru'} onClose={closeForm} size="md" closeOnClickOutside={false}>
           <div className="flex flex-col gap-4">
             <FormError msg={formErr}/>
             <SLabel>Detail Perbaikan / Servis</SLabel>

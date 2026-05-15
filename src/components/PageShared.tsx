@@ -20,13 +20,17 @@ export function Badge({ label, colorClass = 'badge-slate' }: { label: string; co
 }
 
 // ── Modal container ───────────────────────────────────────────
-export function ModalShell({ onClose, title, children, size = 'md', overlayClassName = '', containerClassName = '' }: {
+export function ModalShell({ 
+  onClose, title, children, size = 'md', overlayClassName = '', containerClassName = '',
+  closeOnClickOutside = true 
+}: {
   onClose: () => void; title: string; children: React.ReactNode; size?: 'sm' | 'md' | 'lg' | 'xl';
   overlayClassName?: string;
   containerClassName?: string;
+  closeOnClickOutside?: boolean;
 }) {
   return (
-    <div className={`modal-overlay ${overlayClassName}`} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className={`modal-overlay ${overlayClassName}`} onClick={e => { if (closeOnClickOutside && e.target === e.currentTarget) onClose(); }}>
       <div className={`modal-container modal-${size} ${containerClassName}`}>
         {title && (
           <div className="modal-header">

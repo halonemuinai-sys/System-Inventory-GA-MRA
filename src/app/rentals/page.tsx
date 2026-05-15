@@ -290,7 +290,7 @@ export default function RentalsPage() {
 
       {/* Add/Edit */}
       {(showAdd||editRow)&&(
-        <ModalShell title={editRow?`Edit Rental`:'Tambah Rental'} onClose={closeForm} size="md">
+        <ModalShell title={editRow?`Edit Rental`:'Tambah Rental'} onClose={closeForm} size="md" closeOnClickOutside={false}>
           <div className="flex flex-col gap-4">
             <FormError msg={formErr}/>
             <div className="detail-grid">

@@ -549,7 +549,7 @@ export default function AssetsPage() {
 
       {/* FORM MODAL */}
       {(showAdd || editAsset) && (
-        <ModalShell title={editAsset ? `Edit Aset — ${editAsset.asset_code || editAsset.asset_name}` : 'Tambah Aset Baru'} onClose={closeForm} size="md">
+        <ModalShell title={editAsset ? `Edit Aset — ${editAsset.asset_code || editAsset.asset_name}` : 'Tambah Aset Baru'} onClose={closeForm} size="md" closeOnClickOutside={false}>
           <div className="flex flex-col gap-4">
             <FormError msg={formError} />
             <div className="detail-grid">

@@ -241,7 +241,7 @@ export default function VehiclesPage() {
 
       {/* Add/Edit Modal */}
       {(showAdd||editRow)&&(
-        <ModalShell title={editRow?`Edit — ${editRow.plate_number}`:'Tambah Kendaraan'} onClose={closeForm} size="md">
+        <ModalShell title={editRow?`Edit — ${editRow.plate_number}`:'Tambah Kendaraan'} onClose={closeForm} size="md" closeOnClickOutside={false}>
           <div className="flex flex-col gap-4">
             <FormError msg={formErr}/>
             <SLabel>Identitas Kendaraan</SLabel>

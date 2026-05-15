@@ -269,7 +269,7 @@ export default function DocumentsPage() {
 
       {/* Add/Edit */}
       {(showAdd||editRow)&&(
-        <ModalShell title={editRow?`Edit Dokumen`:'Tambah Dokumen'} onClose={closeForm} size="lg">
+        <ModalShell title={editRow?`Edit Dokumen`:'Tambah Dokumen'} onClose={closeForm} size="lg" closeOnClickOutside={false}>
           <div className="flex flex-col gap-4">
             <FormError msg={formErr}/>
             <SLabel>Identitas Dokumen</SLabel>
