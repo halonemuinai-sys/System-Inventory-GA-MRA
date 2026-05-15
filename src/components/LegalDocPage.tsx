@@ -131,6 +131,12 @@ export default function LegalDocPage({ config }: { config: LegalModuleConfig }) 
       const headers = lines[0].split(',').map(h => h.trim());
       const dataRows = lines.slice(1);
       
+      const MOD_MAP: Record<string, string> = {
+        'Contract': 'contract', 'Corporate': 'corporate', 'Litigation': 'litigation',
+        'License': 'license', 'Monitoring': 'monitoring', 'SOP': 'sop',
+        'HR': 'hr_compliance', 'Tax': 'tax_finance', 'Product': 'product_regulatory'
+      };
+
       let successCount = 0;
       let failCount = 0;
 
@@ -141,9 +147,11 @@ export default function LegalDocPage({ config }: { config: LegalModuleConfig }) 
         const rowData: any = {};
         headers.forEach((h, i) => { rowData[h] = values[i]; });
 
+        const targetModule = MOD_MAP[rowData['Modul (Menu)']] || module;
+
         // Map CSV headers to internal keys
         const payload = {
-          module,
+          module:          targetModule,
           doc_name:        rowData['Nama Dokumen'] || '',
           category:        rowData['Kategori'] || '',
           id_number:       rowData['Nomor Dokumen/Kontrak'] || '',
