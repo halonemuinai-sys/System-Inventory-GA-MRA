@@ -21,10 +21,10 @@ export function Badge({ label, colorClass = 'badge-slate' }: { label: string; co
 
 // ── Modal container ───────────────────────────────────────────
 export function ModalShell({ 
-  onClose, title, children, size = 'md', overlayClassName = '', containerClassName = '',
+  onClose, title, children, footer, size = 'md', overlayClassName = '', containerClassName = '',
   closeOnClickOutside = true 
 }: {
-  onClose: () => void; title: string; children: React.ReactNode; size?: 'sm' | 'md' | 'lg' | 'xl';
+  onClose: () => void; title: string; children: React.ReactNode; footer?: React.ReactNode; size?: 'sm' | 'md' | 'lg' | 'xl';
   overlayClassName?: string;
   containerClassName?: string;
   closeOnClickOutside?: boolean;
@@ -46,7 +46,8 @@ export function ModalShell({
             </button>
           </div>
         )}
-        <div className="modal-body">{children}</div>
+        <div className="modal-body" style={{ overflowY: 'auto', flex: 1 }}>{children}</div>
+        {footer && <div className="modal-footer" style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border)', flexShrink: 0 }}>{footer}</div>}
       </div>
     </div>
   );

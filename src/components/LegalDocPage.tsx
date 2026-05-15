@@ -389,57 +389,55 @@ export default function LegalDocPage({ config }: { config: LegalModuleConfig }) 
         </div>
       ) : (
         <>
-          <TableShell headers={headers} loading={loading} colSpan={headers.length}>
+          <TableShell
+            loading={loading}
+            colSpan={10}
+            headers={[
+              { label: 'ID / No. Ref' },
+              { label: 'Nama Dokumen' },
+              { label: 'Kategori' },
+              { label: 'Perusahaan' },
+              { label: 'PIC' },
+              { label: 'Tgl Terbit' },
+              { label: expiryLabel },
+              { label: 'Kerahasiaan' },
+              { label: 'Status' },
+              { label: 'Aksi', right: true },
+            ]}
+          >
             {rows.length === 0 ? (
-              <tr><td colSpan={headers.length} className="py-14 text-center">
-                <div className="flex justify-center mb-3 text-text-3">{icon}</div>
-                <p className="text-sm-bold text-text-2">Tidak ada dokumen ditemukan</p>
-                <p className="text-xs-muted mt-1">Tambahkan dokumen {title} pertama</p>
-              </td></tr>
+              <tr><td colSpan={10} className="py-20 text-center text-sm-muted">Tidak ada data ditemukan</td></tr>
             ) : rows.map(r => (
-              <tr key={r.id} className={`hover-row${(r.status === 'Critical' || r.status === 'Expired') ? ' bg-rose-50/20' : ''}`}>
-                <td className="td-p font-mono text-blue text-xs font-700">{r.id_number || '—'}</td>
-                <td className="td-p">
-                  <div className="text-sm-bold text-text">{r.doc_name}</div>
-                  {r.notes && <div className="text-xs-muted mt-0.5 truncate max-w-200">{r.notes}</div>}
+              <tr key={r.id} className="hover:bg-surface-2 transition-colors">
+                <td className="p-table font-mono text-xxs font-700 text-blue whitespace-nowrap">{r.id_number || '—'}</td>
+                <td className="p-table max-w-xs">
+                  <div className="font-700 text-text truncate" title={r.doc_name}>{r.doc_name}</div>
+                  {r.notes && <div className="text-xxxs text-text-3 truncate mt-0.5">{r.notes}</div>}
                 </td>
-                <td className="td-p"><Badge label={r.category} colorClass="badge-indigo"/></td>
-                <td className="td-p">
-                  <Badge label={r.confidentiality || 'Public/Internal'} colorClass={CONF_CLS[r.confidentiality] || 'badge-emerald'}/>
+                <td className="p-table"><Badge label={r.category} colorClass="badge-slate"/></td>
+                <td className="p-table max-w-40 text-xxs lh-1-4">{r.company_name}</td>
+                <td className="p-table whitespace-nowrap text-xxs font-600">{r.pic}</td>
+                <td className="p-table whitespace-nowrap text-xxs text-text-2">{fmtDate(r.issue_date)}</td>
+                <td className="p-table whitespace-nowrap">
+                  <div className={`text-xxs font-800 ${EXPIRY_TEXT_CLS[r.status] || 'text-text'}`}>{fmtDate(r.expiry_date)}</div>
+                  {r.status && <div className={`text-xxxs font-700 uppercase tracking-tighter ${EXPIRY_TEXT_CLS[r.status] || 'text-text-3'}`}>{r.status} {r.days_until_expiry ? `(${r.days_until_expiry}h)` : ''}</div>}
                 </td>
-                <td className="td-p text-sm text-text-2">{r.company_name || '—'}</td>
-                <td className="td-p text-sm text-text-2">{r.pic}</td>
-                <td className="td-p text-sm text-text-2">{fmtDate(r.issue_date)}</td>
-                {requireExpiry && (
-                  <td className="td-p text-right">
-                    <div className={`text-xs-bold ${EXPIRY_TEXT_CLS[r.status] || 'text-text-2'}`}>
-                      {fmtDate(r.expiry_date)}
-                    </div>
-                    {r.days_until_expiry !== null && (
-                      <div className="text-xxs text-text-3 mt-0.5">{daysLabel(parseInt(r.days_until_expiry))}</div>
-                    )}
-                  </td>
-                )}
-                {requireExpiry && (
-                  <td className="td-p text-right">
-                    {r.status
-                      ? <Badge label={r.status} colorClass={EXPIRY_STATUS_CLS[r.status] || 'badge-slate'}/>
-                      : <span className="text-text-3">—</span>}
-                  </td>
-                )}
-                <td className="td-p text-right">
+                <td className="p-table">
+                  <Badge label={r.confidentiality || 'Public'} colorClass={CONF_CLS[r.confidentiality] || 'badge-emerald'}/>
+                </td>
+                <td className="p-table">
                   <Badge label={r.doc_status || 'Draft'} colorClass={DOC_STATUS_CLS[r.doc_status] || 'badge-slate'}/>
                 </td>
-                <td className="td-p text-right">
-                  <div className="flex-end gap-2">
-                    <button className="btn-icon" title="Lihat Detail" aria-label={`Detail ${r.doc_name}`} onClick={() => openDetail(r.id)}>
-                      <Eye size={14}/>
+                <td className="p-table text-right whitespace-nowrap">
+                  <div className="flex justify-end gap-1">
+                    <button className="btn-icon" onClick={() => fetchDetail(r.id)} title="Detail">
+                      <Eye size={13}/>
                     </button>
-                    <button className="btn-icon-blue" title="Edit" aria-label={`Edit ${r.doc_name}`} onClick={() => openEdit(r.id)}>
-                      <Edit2 size={14}/>
+                    <button className="btn-icon" onClick={() => openEdit(r.id)} title="Edit">
+                      <Edit2 size={13}/>
                     </button>
-                    <button className="btn-icon text-rose hover:bg-rose-light" title="Hapus" aria-label={`Hapus ${r.doc_name}`} onClick={() => handleDelete(r.id, r.doc_name)}>
-                      <Trash2 size={14}/>
+                    <button className="btn-icon hover:bg-rose-light hover:text-rose" onClick={() => del(r.id)} title="Hapus">
+                      <Trash2 size={13}/>
                     </button>
                   </div>
                 </td>
@@ -550,94 +548,115 @@ export default function LegalDocPage({ config }: { config: LegalModuleConfig }) 
           onClose={closeForm}
           size="md"
           closeOnClickOutside={false}
-        >
-          <div className="flex flex-col gap-3">
-            <FormError msg={formErr}/>
-            <SLabel>Informasi Dokumen</SLabel>
-            <div className="detail-grid">
-              <FF label="Nama Dokumen" id="ld_name" required>
-                <input id="ld_name" type="text" value={form.doc_name}
-                  onChange={e => sf('doc_name', e.target.value)}
-                  placeholder="Nama dokumen lengkap" className="input-premium" title="Nama Dokumen"/>
-              </FF>
-              <FF label="Kategori" id="ld_cat" required>
-                <select id="ld_cat" value={form.category}
-                  onChange={e => sf('category', e.target.value)}
-                  className="input-premium" title="Kategori">
-                  <option value="">— Pilih Kategori —</option>
-                  {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </FF>
-              <FF label={idLabel} id="ld_id">
-                <input id="ld_id" type="text" value={form.id_number}
-                  onChange={e => sf('id_number', e.target.value)}
-                  placeholder={`No. referensi / ${idLabel.toLowerCase()}`}
-                  className="input-premium" title={idLabel}/>
-              </FF>
-              <FF label="Perusahaan" id="ld_co">
-                <select id="ld_co" value={form.company_id}
-                  onChange={e => sf('company_id', e.target.value)}
-                  className="input-premium" title="Perusahaan">
-                  <option value="">— Pilih Perusahaan —</option>
-                  {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </FF>
-              <FF label="PIC (Penanggung Jawab)" id="ld_pic" required>
-                <input id="ld_pic" type="text" value={form.pic}
-                  onChange={e => sf('pic', e.target.value)}
-                  placeholder="Nama PIC" className="input-premium" title="PIC"/>
-              </FF>
-              <FF label="Tanggal Terbit / Efektif" id="ld_issue">
-                <input id="ld_issue" type="date" value={form.issue_date}
-                  onChange={e => sf('issue_date', e.target.value)}
-                  className="input-premium" title="Tanggal Terbit"/>
-              </FF>
-              <FF label={expiryLabel} id="ld_exp" required={requireExpiry}>
-                <input id="ld_exp" type="date" value={form.expiry_date}
-                  onChange={e => sf('expiry_date', e.target.value)}
-                  className="input-premium" title={expiryLabel}/>
-              </FF>
-              <FF label="Status Dokumen" id="ld_docstat" required>
-                <select id="ld_docstat" value={form.doc_status}
-                  onChange={e => sf('doc_status', e.target.value)}
-                  className="input-premium" title="Status Dokumen">
-                  {DOC_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </FF>
-              <FF label="Klasifikasi Kerahasiaan" id="ld_conf" required>
-                <select id="ld_conf" value={form.confidentiality}
-                  onChange={e => sf('confidentiality', e.target.value)}
-                  className="input-premium" title="Klasifikasi Kerahasiaan">
-                  {CONFIDENTIALITY_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
-                </select>
-              </FF>
-            </div>
-            <SLabel>Lampiran</SLabel>
-            <div className="detail-grid">
-              <FF label="URL File / Link Dokumen" id="ld_url">
-                <input id="ld_url" type="url" value={form.file_url}
-                  onChange={e => sf('file_url', e.target.value)}
-                  placeholder="https://drive.google.com/..." className="input-premium" title="URL File"/>
-              </FF>
-              <FF label="Nama File" id="ld_fname">
-                <input id="ld_fname" type="text" value={form.file_name}
-                  onChange={e => sf('file_name', e.target.value)}
-                  placeholder="contoh: Kontrak_2025.pdf" className="input-premium" title="Nama File"/>
-              </FF>
-            </div>
-            <FF label="Catatan" id="ld_notes">
-              <textarea id="ld_notes" rows={2} value={form.notes}
-                onChange={e => sf('notes', e.target.value)}
-                placeholder="Catatan tambahan..." className="input-premium resize-y" title="Catatan"/>
-            </FF>
-            <div className="modal-footer-border">
-              <button className="btn" onClick={closeForm} disabled={saving} title="Batal">Batal</button>
-              <button className="btn btn-primary min-w-130" onClick={save} disabled={saving}
-                title={editRow ? 'Simpan' : 'Tambah'}>
-                {saving
-                  ? <><Loader2 size={14} className="animate-spin"/> Menyimpan…</>
-                  : <><Save size={14}/> {editRow ? 'Simpan' : 'Tambah'}</>}
+          footer={
+            <div className="flex-end gap-3">
+              <button className="btn" onClick={closeForm} disabled={saving}>Batal</button>
+              <button className="btn btn-primary" onClick={save} disabled={saving} style={{ minWidth: 120 }}>
+                {saving ? <Loader2 size={16} className="animate-spin" /> : (form.id ? <Save size={16} /> : <Plus size={16} />)}
+                {form.id ? 'Simpan Perubahan' : 'Tambah Dokumen'}
               </button>
+            </div>
+          }
+        >
+          <div className="flex flex-col gap-6">
+            <FormError msg={formErr}/>
+            
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 pb-1 border-b border-border">
+                <div className="w-1.5 h-4 bg-blue rounded-full"></div>
+                <span className="text-xs-bold uppercase tracking-wider text-text-2">Informasi Utama</span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+                <FF label="Nama Dokumen" id="ld_name" required>
+                  <input id="ld_name" type="text" value={form.doc_name}
+                    onChange={e => sf('doc_name', e.target.value)}
+                    placeholder="Nama dokumen lengkap" className="input-premium" title="Nama Dokumen"/>
+                </FF>
+                <FF label="Kategori" id="ld_cat" required>
+                  <select id="ld_cat" value={form.category}
+                    onChange={e => sf('category', e.target.value)}
+                    className="input-premium" title="Kategori">
+                    <option value="">— Pilih Kategori —</option>
+                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </FF>
+                <FF label={idLabel} id="ld_id">
+                  <input id="ld_id" type="text" value={form.id_number}
+                    onChange={e => sf('id_number', e.target.value)}
+                    placeholder={`No. referensi / ${idLabel.toLowerCase()}`}
+                    className="input-premium" title={idLabel}/>
+                </FF>
+                <FF label="Perusahaan" id="ld_co">
+                  <select id="ld_co" value={form.company_id}
+                    onChange={e => sf('company_id', e.target.value)}
+                    className="input-premium" title="Perusahaan">
+                    <option value="">— Pilih Perusahaan —</option>
+                    {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </FF>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 pb-1 border-b border-border">
+                <div className="w-1.5 h-4 bg-amber rounded-full"></div>
+                <span className="text-xs-bold uppercase tracking-wider text-text-2">PIC & Masa Berlaku</span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+                <FF label="PIC (Penanggung Jawab)" id="ld_pic" required>
+                  <input id="ld_pic" type="text" value={form.pic}
+                    onChange={e => sf('pic', e.target.value)}
+                    placeholder="Nama PIC" className="input-premium" title="PIC"/>
+                </FF>
+                <FF label="Tgl Terbit / Efektif" id="ld_issue">
+                  <input id="ld_issue" type="date" value={form.issue_date}
+                    onChange={e => sf('issue_date', e.target.value)}
+                    className="input-premium" title="Tgl Terbit"/>
+                </FF>
+                <FF label={expiryLabel} id="ld_exp" required>
+                  <input id="ld_exp" type="date" value={form.expiry_date}
+                    onChange={e => sf('expiry_date', e.target.value)}
+                    className="input-premium" title={expiryLabel}/>
+                </FF>
+                <FF label="Status Dokumen" id="ld_st" required>
+                  <select id="ld_st" value={form.doc_status}
+                    onChange={e => sf('doc_status', e.target.value)}
+                    className="input-premium" title="Status Dokumen">
+                    {DOC_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </FF>
+                <FF label="Kerahasiaan" id="ld_conf" required>
+                  <select id="ld_conf" value={form.confidentiality}
+                    onChange={e => sf('confidentiality', e.target.value)}
+                    className="input-premium" title="Kerahasiaan">
+                    {CONF_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
+                  </select>
+                </FF>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 pb-1 border-b border-border">
+                <div className="w-1.5 h-4 bg-emerald rounded-full"></div>
+                <span className="text-xs-bold uppercase tracking-wider text-text-2">Lampiran & Catatan</span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+                <FF label="URL File / Link Dokumen" id="ld_url">
+                  <input id="ld_url" type="text" value={form.file_url}
+                    onChange={e => sf('file_url', e.target.value)}
+                    placeholder="https://drive.google.com/..." className="input-premium" title="URL File"/>
+                </FF>
+                <FF label="Nama File" id="ld_fname">
+                  <input id="ld_fname" type="text" value={form.file_name}
+                    onChange={e => sf('file_name', e.target.value)}
+                    placeholder="contoh: Kontrak_2025.pdf" className="input-premium" title="Nama File"/>
+                </FF>
+              </div>
+              <FF label="Catatan Tambahan" id="ld_notes">
+                <textarea id="ld_notes" value={form.notes}
+                  onChange={e => sf('notes', e.target.value)}
+                  placeholder="Catatan tambahan..." className="input-premium min-h-20" title="Catatan"/>
+              </FF>
             </div>
           </div>
         </ModalShell>
