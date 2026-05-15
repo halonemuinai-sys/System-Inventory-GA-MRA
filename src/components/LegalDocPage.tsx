@@ -402,7 +402,7 @@ export default function LegalDocPage({ config }: { config: LegalModuleConfig }) 
               { label: expiryLabel },
               { label: 'Kerahasiaan' },
               { label: 'Status' },
-              { label: 'Aksi', right: true },
+              { label: 'Aksi', right: true, width: 140 },
             ]}
           >
             {rows.length === 0 ? (
@@ -428,16 +428,19 @@ export default function LegalDocPage({ config }: { config: LegalModuleConfig }) 
                 <td className="p-table">
                   <Badge label={r.doc_status || 'Draft'} colorClass={DOC_STATUS_CLS[r.doc_status] || 'badge-slate'}/>
                 </td>
-                <td className="p-table text-right whitespace-nowrap">
-                  <div className="flex justify-end gap-1">
-                    <button className="btn-icon" onClick={() => fetchDetail(r.id)} title="Detail">
-                      <Eye size={13}/>
+                <td className="p-table text-right whitespace-nowrap pr-6">
+                  <div className="flex justify-end gap-2.5">
+                    <button className="btn-icon hover:bg-blue-light hover:text-blue border-transparent" 
+                      onClick={() => fetchDetail(r.id)} title="Detail Dokumen">
+                      <Eye size={15}/>
                     </button>
-                    <button className="btn-icon" onClick={() => openEdit(r.id)} title="Edit">
-                      <Edit2 size={13}/>
+                    <button className="btn-icon hover:bg-blue-light hover:text-blue border-transparent" 
+                      onClick={() => openEdit(r.id)} title="Ubah Data">
+                      <Edit2 size={15}/>
                     </button>
-                    <button className="btn-icon hover:bg-rose-light hover:text-rose" onClick={() => del(r.id)} title="Hapus">
-                      <Trash2 size={13}/>
+                    <button className="btn-icon hover:bg-rose-light hover:text-rose border-transparent" 
+                      onClick={() => del(r.id)} title="Hapus Dokumen">
+                      <Trash2 size={15}/>
                     </button>
                   </div>
                 </td>

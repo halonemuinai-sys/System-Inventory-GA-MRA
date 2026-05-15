@@ -158,7 +158,7 @@ export function PaginationBar({ page, limit, total, totalPages, onChange }: { pa
 
 // ── Table shell ───────────────────────────────────────────────
 export function TableShell({ headers, children, loading, colSpan }: {
-  headers: { label: string; right?: boolean }[];
+  headers: { label: string; right?: boolean; width?: string | number }[];
   children: React.ReactNode;
   loading?: boolean;
   colSpan: number;
@@ -171,7 +171,8 @@ export function TableShell({ headers, children, loading, colSpan }: {
             {headers.map((h, i) => (
               <th 
                 key={i} 
-                className={`text-xs-bold p-table border-b border-border whitespace-nowrap ${h.right ? 'text-right' : 'text-left'}`}
+                className={`text-xs-bold p-table border-b border-border whitespace-nowrap ${h.right ? 'text-right pr-6' : 'text-left'}`}
+                style={h.width ? { width: h.width } : {}}
               >
                 {h.label}
               </th>
