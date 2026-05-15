@@ -31,10 +31,16 @@ export async function GET(req: Request) {
     }
 
     const modules      = dept === 'legal' ? LEGAL_MODULES : COMPLIANCE_MODULES;
-    const placeholders = modules.map((_, i) => `$${i + 1}`).join(',');
-    const p            = modules as unknown[];
+    const companyId    = searchParams.get('company_id') || '';
+    
+    // Build filter conditions
+    let moduleFilter = `module IN (${modules.map((_, i) => `$${i + 1}`).join(',')})`;
+    let companyFilter = companyId ? `AND company_id = $${modules.length + 1}` : '';
+    let finalFilter = `${moduleFilter} ${companyFilter}`;
+    
+    const p = companyId ? [...modules, companyId] : modules;
 
-    const [kpiRes, moduleRes, statusRes, confRes, expiryRes, critRes] =
+    const [kpiRes, moduleRes, statusRes, confRes, expiryRes, critRes, companyRes] =
       await Promise.all([
 
         // A — KPI row
@@ -52,7 +58,7 @@ export async function GET(req: Request) {
                  AND expiry_date < CURRENT_DATE
              )                                                                  AS expired
            FROM legal_documents
-           WHERE module IN (${placeholders})`, p
+           WHERE ${finalFilter}`, p
         ),
 
         // B — per-module breakdown
@@ -65,7 +71,7 @@ export async function GET(req: Request) {
                  AND expiry_date < CURRENT_DATE + INTERVAL '30 days'
              )                                                                  AS critical
            FROM legal_documents
-           WHERE module IN (${placeholders})
+           WHERE ${finalFilter}
            GROUP BY module
            ORDER BY module`, p
         ),
@@ -74,7 +80,7 @@ export async function GET(req: Request) {
         query(
           `SELECT doc_status AS status, COUNT(*) AS count
            FROM legal_documents
-           WHERE module IN (${placeholders})
+           WHERE ${finalFilter}
            GROUP BY doc_status
            ORDER BY count DESC`, p
         ),
@@ -83,7 +89,7 @@ export async function GET(req: Request) {
         query(
           `SELECT confidentiality AS level, COUNT(*) AS count
            FROM legal_documents
-           WHERE module IN (${placeholders})
+           WHERE ${finalFilter}
            GROUP BY confidentiality
            ORDER BY count DESC`, p
         ),
@@ -111,7 +117,7 @@ export async function GET(req: Request) {
                  AND expiry_date < CURRENT_DATE
              )                                                                  AS "Expired"
            FROM legal_documents
-           WHERE module IN (${placeholders})
+           WHERE ${finalFilter}
            GROUP BY module
            ORDER BY module`, p
         ),
@@ -127,11 +133,28 @@ export async function GET(req: Request) {
                ELSE 'Warning'
              END                                                                AS status
            FROM legal_documents
-           WHERE module IN (${placeholders})
+           WHERE ${finalFilter}
              AND expiry_date IS NOT NULL
              AND expiry_date < CURRENT_DATE + INTERVAL '90 days'
            ORDER BY expiry_date ASC
            LIMIT 10`, p
+        ),
+
+        // G — per-company breakdown
+        query(
+          `SELECT
+             c.name                                                             AS company_name,
+             COUNT(*)                                                           AS total,
+             COUNT(*) FILTER (WHERE l.expiry_date < CURRENT_DATE)               AS expired,
+             COUNT(*) FILTER (
+               WHERE l.expiry_date >= CURRENT_DATE
+                 AND l.expiry_date <  CURRENT_DATE + INTERVAL '30 days'
+             )                                                                  AS critical
+           FROM legal_documents l
+           LEFT JOIN m_company c ON l.company_id = c.id
+           WHERE ${finalFilter.replace(/module/g, 'l.module').replace(/company_id/g, 'l.company_id')}
+           GROUP BY c.name
+           ORDER BY total DESC`, p
         ),
       ]);
 
@@ -167,6 +190,12 @@ export async function GET(req: Request) {
         Expired:  parseInt(r.Expired  || '0'),
       })),
       criticalDocs: critRes.rows,
+      byCompany: companyRes.rows.map(r => ({
+        name:     r.company_name || 'Unassigned',
+        total:    parseInt(r.total    || '0'),
+        expired:  parseInt(r.expired  || '0'),
+        critical: parseInt(r.critical || '0'),
+      })),
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
