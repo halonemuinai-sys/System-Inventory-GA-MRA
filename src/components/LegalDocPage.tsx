@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Search, Plus, Eye, Edit2, Trash2, AlertCircle,
-  Loader2, Save, FileCheck, RefreshCw, ExternalLink,
+  Loader2, Save, FileCheck, RefreshCw, ExternalLink, Upload,
 } from 'lucide-react';
 import {
   Badge, ModalShell, FF, SLabel, PaginationBar,
@@ -109,6 +109,7 @@ export default function LegalDocPage({ config }: { config: LegalModuleConfig }) 
   const [form, setForm]             = useState<any>(EMPTY);
   const [saving, setSaving]         = useState(false);
   const [formErr, setFormErr]       = useState('');
+  const [importing, setImporting]   = useState(false);
   const LIMIT = 20;
 
   useEffect(() => {
@@ -117,6 +118,65 @@ export default function LegalDocPage({ config }: { config: LegalModuleConfig }) 
       .then(d => setCompanies(d.companies || []))
       .catch(() => {});
   }, []);
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length < 2) throw new Error('File kosong atau tidak valid');
+
+      const headers = lines[0].split(',').map(h => h.trim());
+      const dataRows = lines.slice(1);
+      
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const row of dataRows) {
+        const values = row.split(',').map(v => v.trim());
+        if (values.length < headers.length) continue;
+
+        const rowData: any = {};
+        headers.forEach((h, i) => { rowData[h] = values[i]; });
+
+        // Map CSV headers to internal keys
+        const payload = {
+          module,
+          doc_name:        rowData['Nama Dokumen'] || '',
+          category:        rowData['Kategori'] || '',
+          id_number:       rowData['Nomor Dokumen/Kontrak'] || '',
+          pic:             rowData['PIC'] || '',
+          issue_date:      rowData['Tanggal Terbit (YYYY-MM-DD)'] || '',
+          expiry_date:     rowData['Tanggal Kadaluarsa (YYYY-MM-DD)'] || '',
+          doc_status:      rowData['Status Dokumen'] || 'Draft',
+          confidentiality: rowData['Kerahasiaan'] || 'Public/Internal',
+          file_url:        rowData['Link/URL Dokumen'] || '',
+          file_name:       rowData['Nama File Lampiran'] || '',
+          notes:           rowData['Catatan'] || '',
+          company_id:      companies.find(c => c.name.toLowerCase() === (rowData['Perusahaan']||'').toLowerCase())?.id || null
+        };
+
+        if (!payload.doc_name || !payload.category) { failCount++; continue; }
+
+        const res = await fetch('/api/legal-docs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) successCount++; else failCount++;
+      }
+
+      alert(`Import Selesai!\nBerhasil: ${successCount}\nGagal: ${failCount}`);
+      load(1);
+    } catch (err: any) {
+      alert('Gagal mengimpor: ' + err.message);
+    } finally {
+      setImporting(false);
+      e.target.value = '';
+    }
+  };
 
   const load = useCallback(async (p: number) => {
     setLoading(true); setError(null);
@@ -223,9 +283,16 @@ export default function LegalDocPage({ config }: { config: LegalModuleConfig }) 
           <h1 className="header-title">{title}</h1>
           <p className="header-subtitle">{subtitle}</p>
         </div>
-        <button className="btn btn-primary" onClick={openAdd} title="Tambah Dokumen Baru">
-          <Plus size={16}/> Tambah Dokumen
-        </button>
+        <div className="flex gap-2">
+          <label className={`btn cursor-pointer ${importing ? 'opacity-50 pointer-events-none' : ''}`} title="Import data dari file CSV">
+            {importing ? <Loader2 size={16} className="animate-spin text-blue" /> : <Upload size={16} className="text-blue" />}
+            <span className={importing ? 'text-blue' : ''}>{importing ? 'Memproses...' : 'Import CSV'}</span>
+            <input type="file" accept=".csv" onChange={handleImport} className="hidden" disabled={importing} />
+          </label>
+          <button className="btn btn-primary" onClick={openAdd} title="Tambah Dokumen Baru">
+            <Plus size={16}/> Tambah Dokumen
+          </button>
+        </div>
       </div>
 
       {/* FILTERS */}
