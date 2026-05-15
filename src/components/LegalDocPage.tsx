@@ -393,59 +393,59 @@ export default function LegalDocPage({ config }: { config: LegalModuleConfig }) 
             loading={loading}
             colSpan={10}
             headers={[
-              { label: 'ID / No. Ref' },
-              { label: 'Nama Dokumen' },
-              { label: 'Kategori' },
-              { label: 'Perusahaan' },
-              { label: 'PIC' },
-              { label: 'Tgl Terbit' },
-              { label: expiryLabel },
-              { label: 'Kerahasiaan' },
-              { label: 'Status' },
-              { label: 'Aksi', right: true, width: 140 },
-            ]}
-          >
-            {rows.length === 0 ? (
-              <tr><td colSpan={10} className="py-20 text-center text-sm-muted">Tidak ada data ditemukan</td></tr>
-            ) : rows.map(r => (
-              <tr key={r.id} className="hover:bg-surface-2 transition-colors">
-                <td className="p-table font-mono text-xxs font-700 text-blue whitespace-nowrap">{r.id_number || '—'}</td>
-                <td className="p-table max-w-xs">
-                  <div className="font-700 text-text truncate" title={r.doc_name}>{r.doc_name}</div>
-                  {r.notes && <div className="text-xxxs text-text-3 truncate mt-0.5">{r.notes}</div>}
-                </td>
-                <td className="p-table"><Badge label={r.category} colorClass="badge-slate"/></td>
-                <td className="p-table max-w-40 text-xxs lh-1-4">{r.company_name}</td>
-                <td className="p-table whitespace-nowrap text-xxs font-600">{r.pic}</td>
-                <td className="p-table whitespace-nowrap text-xxs text-text-2">{fmtDate(r.issue_date)}</td>
-                <td className="p-table whitespace-nowrap">
-                  <div className={`text-xxs font-800 ${EXPIRY_TEXT_CLS[r.status] || 'text-text'}`}>{fmtDate(r.expiry_date)}</div>
-                  {r.status && <div className={`text-xxxs font-700 uppercase tracking-tighter ${EXPIRY_TEXT_CLS[r.status] || 'text-text-3'}`}>{r.status} {r.days_until_expiry ? `(${r.days_until_expiry}h)` : ''}</div>}
-                </td>
-                <td className="p-table">
-                  <Badge label={r.confidentiality || 'Public'} colorClass={CONF_CLS[r.confidentiality] || 'badge-emerald'}/>
-                </td>
-                <td className="p-table">
-                  <Badge label={r.doc_status || 'Draft'} colorClass={DOC_STATUS_CLS[r.doc_status] || 'badge-slate'}/>
-                </td>
-                <td className="p-table text-right whitespace-nowrap pr-6">
-                  <div className="flex justify-end gap-2.5">
-                    <button className="btn-icon hover:bg-blue-light hover:text-blue border-transparent" 
-                      onClick={() => fetchDetail(r.id)} title="Detail Dokumen">
-                      <Eye size={15}/>
-                    </button>
-                    <button className="btn-icon hover:bg-blue-light hover:text-blue border-transparent" 
-                      onClick={() => openEdit(r.id)} title="Ubah Data">
-                      <Edit2 size={15}/>
-                    </button>
-                    <button className="btn-icon hover:bg-rose-light hover:text-rose border-transparent" 
-                      onClick={() => del(r.id)} title="Hapus Dokumen">
-                      <Trash2 size={15}/>
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+          { label: 'ID / NO. REF', width: 120 },
+          { label: 'NAMA DOKUMEN', width: 250 },
+          { label: 'KATEGORI', width: 140 },
+          { label: 'PERUSAHAAN', width: 180 },
+          { label: 'PIC', width: 120 },
+          { label: 'TGL TERBIT', width: 100 },
+          { label: expiryLabel.toUpperCase(), width: 140 },
+          { label: 'KERAHASIAAN', width: 130 },
+          { label: 'STATUS', width: 110 },
+          { label: 'AKSI', right: true, width: 130 },
+        ]}
+      >
+        {rows.length === 0 ? (
+          <tr><td colSpan={10} className="py-20 text-center text-sm-muted">Tidak ada data ditemukan</td></tr>
+        ) : rows.map(r => (
+          <tr key={r.id} className="hover:bg-surface-2 transition-colors border-b border-border-subtle">
+            <td className="p-table font-mono text-xxs font-700 text-blue whitespace-nowrap align-middle">{r.id_number || '—'}</td>
+            <td className="p-table max-w-xs align-middle">
+              <div className="font-700 text-xs text-text truncate" title={r.doc_name}>{r.doc_name}</div>
+              {r.notes && <div className="text-xxxs text-text-3 truncate mt-0.5">{r.notes}</div>}
+            </td>
+            <td className="p-table align-middle"><Badge label={r.category} colorClass="badge-slate"/></td>
+            <td className="p-table text-xs text-text-2 align-middle truncate max-w-40" title={r.company_name}>{r.company_name}</td>
+            <td className="p-table whitespace-nowrap text-xs font-600 align-middle">{r.pic}</td>
+            <td className="p-table whitespace-nowrap text-xs text-text-2 align-middle">{fmtDate(r.issue_date)}</td>
+            <td className="p-table whitespace-nowrap align-middle">
+              <div className={`text-xs font-800 ${EXPIRY_TEXT_CLS[r.status] || 'text-text'}`}>{fmtDate(r.expiry_date)}</div>
+              {r.status && <div className={`text-xxxs font-700 uppercase tracking-tighter ${EXPIRY_TEXT_CLS[r.status] || 'text-text-3'}`}>{r.status} {r.days_until_expiry ? `(${r.days_until_expiry}h)` : ''}</div>}
+            </td>
+            <td className="p-table align-middle">
+              <Badge label={r.confidentiality || 'Public'} colorClass={CONF_CLS[r.confidentiality] || 'badge-emerald'}/>
+            </td>
+            <td className="p-table align-middle">
+              <Badge label={r.doc_status || 'Draft'} colorClass={DOC_STATUS_CLS[r.doc_status] || 'badge-slate'}/>
+            </td>
+            <td className="p-table text-right whitespace-nowrap pr-6 align-middle">
+              <div className="flex justify-end gap-2">
+                <button className="btn-icon hover:bg-blue-light hover:text-blue border-transparent" 
+                  onClick={() => fetchDetail(r.id)} title="Detail Dokumen">
+                  <Eye size={15}/>
+                </button>
+                <button className="btn-icon hover:bg-blue-light hover:text-blue border-transparent" 
+                  onClick={() => openEdit(r.id)} title="Ubah Data">
+                  <Edit2 size={15}/>
+                </button>
+                <button className="btn-icon hover:bg-rose-light hover:text-rose border-transparent" 
+                  onClick={() => del(r.id)} title="Hapus Dokumen">
+                  <Trash2 size={15}/>
+                </button>
+              </div>
+            </td>
+          </tr>
+        ))}
           </TableShell>
           {!loading && rows.length > 0 && (
             <PaginationBar page={page} limit={LIMIT} total={total} totalPages={totalPages}
