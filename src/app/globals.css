@@ -752,6 +752,16 @@ textarea {
 .h-80vh { height: 80vh; }
 .badge-custom { --badge-c: var(--badge-c); }
 .p-table { padding: 0.75rem 1rem; }
+.td-doc-name   { max-width: 210px; }
+.td-category   { max-width: 100px; }
+.td-company    { max-width: 140px; }
+.td-action-sticky {
+  position: sticky;
+  right: 0;
+  background: var(--surface);
+  box-shadow: -4px 0 8px rgba(0,0,0,0.04);
+}
+html.dark .td-action-sticky { box-shadow: -4px 0 8px rgba(0,0,0,0.15); }
 .h-1\.5 { height: 0.375rem; }
 .h-full { height: 100%; width: var(--pct, 100%); }
 .bg-surface-2 { background: var(--surface-2); }
@@ -1977,8 +1987,8 @@ html.dark .dash-panel {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   padding: 1.5rem 2.5rem;
-  backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
   gap: 3rem;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
@@ -2201,6 +2211,7 @@ html.dark .dash-panel .dbadge-orange  { background: rgba(249,115,22,0.15);  colo
   left: 50%;
   transform: translateX(-50%) translateY(10px);
   background: rgba(15, 23, 42, 0.98);
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   color: #f8fafc;
   padding: 10px 14px;

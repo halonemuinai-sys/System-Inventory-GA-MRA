@@ -393,63 +393,70 @@ export default function LegalDocPage({ config }: { config: LegalModuleConfig }) 
             loading={loading}
             colSpan={10}
             headers={[
-          { label: 'ID / NO. REF', width: 120 },
-          { label: 'NAMA DOKUMEN', width: 250 },
-          { label: 'KATEGORI', width: 110 },
-          { label: 'PERUSAHAAN', width: 180 },
-          { label: 'PIC', width: 120 },
-          { label: 'TGL TERBIT', width: 100 },
-          { label: expiryLabel.toUpperCase(), width: 140 },
-          { label: 'KERAHASIAAN', width: 130 },
-          { label: 'STATUS', width: 110 },
-          { label: 'AKSI', right: true, width: 130 },
+          { label: 'NO. REF',                    width: 100 },
+          { label: 'NAMA DOKUMEN',                width: 210 },
+          { label: 'KATEGORI',                    width: 100 },
+          { label: 'PERUSAHAAN',                  width: 140 },
+          { label: 'PIC',                         width: 100 },
+          { label: 'TGL TERBIT',                  width: 88  },
+          { label: expiryLabel.toUpperCase(),      width: 110 },
+          { label: 'KLASIFIKASI',                 width: 100 },
+          { label: 'STATUS',                      width: 96  },
+          { label: 'AKSI', right: true, width: 96 },
         ]}
       >
         {rows.length === 0 ? (
           <tr><td colSpan={10} className="py-20 text-center text-sm-muted">Tidak ada data ditemukan</td></tr>
-        ) : rows.map(r => (
+        ) : rows.map(r => {
+          // Abbreviate long confidentiality labels for table display
+          const confShort: Record<string, string> = {
+            'Public/Internal': 'Public',
+            'Restricted': 'Restricted',
+            'Confidential': 'Confidential',
+            'Strictly Confidential / Privileged': 'Strictly Conf.',
+          };
+          return (
           <tr key={r.id} className="hover:bg-surface-2 transition-colors border-b border-border-subtle">
-            <td className="p-table font-mono text-xxs font-700 text-blue whitespace-nowrap align-middle">{r.id_number || '—'}</td>
-            <td className="p-table max-w-xs align-middle">
-              <div className="font-700 text-xs text-text truncate" title={r.doc_name}>{r.doc_name}</div>
-              {r.notes && <div className="text-xxxs text-text-3 truncate mt-0.5">{r.notes}</div>}
+            <td className="p-table font-mono text-[10px] font-700 text-blue whitespace-nowrap align-middle">{r.id_number || '—'}</td>
+            <td className="p-table align-middle td-doc-name">
+              <div className="font-600 text-[11px] text-text truncate" title={r.doc_name}>{r.doc_name}</div>
+              {r.notes && <div className="text-[9px] text-text-3 truncate mt-0.5">{r.notes}</div>}
             </td>
-            <td className="p-table align-middle max-w-[110px]">
-              <div className="truncate" title={r.category}>
-                <Badge label={r.category} colorClass="badge-slate !text-[10px] py-0.5 px-2"/>
-              </div>
+            <td className="p-table align-middle td-category">
+              <span className="inline-block truncate max-w-full text-[10px] font-600 text-text-2" title={r.category}>{r.category}</span>
             </td>
-            <td className="p-table text-xs text-text-2 align-middle truncate max-w-40" title={r.company_name}>{r.company_name}</td>
-            <td className="p-table whitespace-nowrap text-xs font-600 align-middle">{r.pic}</td>
-            <td className="p-table whitespace-nowrap text-xs text-text-2 align-middle">{fmtDate(r.issue_date)}</td>
+            <td className="p-table text-[11px] text-text-2 align-middle truncate td-company" title={r.company_name}>{r.company_name || '—'}</td>
+            <td className="p-table whitespace-nowrap text-[11px] font-600 align-middle">{r.pic}</td>
+            <td className="p-table whitespace-nowrap text-[10px] text-text-2 align-middle">{fmtDate(r.issue_date)}</td>
             <td className="p-table whitespace-nowrap align-middle">
-              <div className={`text-xs font-800 ${EXPIRY_TEXT_CLS[r.status] || 'text-text'}`}>{fmtDate(r.expiry_date)}</div>
-              {r.status && <div className={`text-xxxs font-700 uppercase tracking-tighter ${EXPIRY_TEXT_CLS[r.status] || 'text-text-3'}`}>{r.status} {r.days_until_expiry ? `(${r.days_until_expiry}h)` : ''}</div>}
+              <div className={`text-[10px] font-700 ${EXPIRY_TEXT_CLS[r.status] || 'text-text'}`}>{fmtDate(r.expiry_date)}</div>
+              {r.status && <div className={`text-[9px] font-600 uppercase tracking-tight mt-0.5 ${EXPIRY_TEXT_CLS[r.status] || 'text-text-3'}`}>{r.status}{r.days_until_expiry ? ` · ${r.days_until_expiry}h` : ''}</div>}
             </td>
             <td className="p-table align-middle">
-              <Badge label={r.confidentiality || 'Public'} colorClass={CONF_CLS[r.confidentiality] || 'badge-emerald'}/>
+              <Badge label={confShort[r.confidentiality] || r.confidentiality || 'Public'} colorClass={`${CONF_CLS[r.confidentiality] || 'badge-emerald'} !text-[9px]`}/>
             </td>
             <td className="p-table align-middle">
-              <Badge label={r.doc_status || 'Draft'} colorClass={DOC_STATUS_CLS[r.doc_status] || 'badge-slate'}/>
+              <Badge label={r.doc_status || 'Draft'} colorClass={`${DOC_STATUS_CLS[r.doc_status] || 'badge-slate'} !text-[9px]`}/>
             </td>
-            <td className="p-table text-right whitespace-nowrap pr-6 align-middle">
-              <div className="flex justify-end gap-2">
-                <button className="btn-icon hover:bg-blue-light hover:text-blue border-transparent" 
-                  onClick={() => fetchDetail(r.id)} title="Detail Dokumen">
-                  <Eye size={15}/>
+            <td className="p-table text-right whitespace-nowrap align-middle td-action-sticky">
+              <div className="flex justify-end gap-1.5 pr-3">
+                <button className="btn-icon hover:bg-blue-light hover:text-blue border-transparent"
+                  onClick={() => openDetail(r.id)} title="Detail Dokumen">
+                  <Eye size={13}/>
                 </button>
-                <button className="btn-icon hover:bg-blue-light hover:text-blue border-transparent" 
+                <button className="btn-icon hover:bg-blue-light hover:text-blue border-transparent"
                   onClick={() => openEdit(r.id)} title="Ubah Data">
-                  <Edit2 size={15}/>
+                  <Edit2 size={13}/>
                 </button>
-                <button className="btn-icon hover:bg-rose-light hover:text-rose border-transparent" 
-                  onClick={() => del(r.id)} title="Hapus Dokumen">
-                  <Trash2 size={15}/>
+                <button className="btn-icon hover:bg-rose-light hover:text-rose border-transparent"
+                  onClick={() => handleDelete(r.id, r.doc_name)} title="Hapus Dokumen">
+                  <Trash2 size={13}/>
                 </button>
               </div>
             </td>
           </tr>
-        ))}
+          );
+        })}
           </TableShell>
           {!loading && rows.length > 0 && (
             <PaginationBar page={page} limit={LIMIT} total={total} totalPages={totalPages}
