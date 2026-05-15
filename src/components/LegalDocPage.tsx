@@ -474,6 +474,7 @@ export default function LegalDocPage({ config }: { config: LegalModuleConfig }) 
           title={editRow ? `Edit — ${editRow.doc_name}` : `Tambah ${title}`}
           onClose={closeForm}
           size="md"
+          closeOnClickOutside={false}
         >
           <div className="flex flex-col gap-3">
             <FormError msg={formErr}/>
