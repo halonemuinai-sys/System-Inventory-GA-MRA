@@ -395,7 +395,7 @@ export default function LegalDocPage({ config }: { config: LegalModuleConfig }) 
             headers={[
           { label: 'ID / NO. REF', width: 120 },
           { label: 'NAMA DOKUMEN', width: 250 },
-          { label: 'KATEGORI', width: 140 },
+          { label: 'KATEGORI', width: 110 },
           { label: 'PERUSAHAAN', width: 180 },
           { label: 'PIC', width: 120 },
           { label: 'TGL TERBIT', width: 100 },
@@ -414,7 +414,11 @@ export default function LegalDocPage({ config }: { config: LegalModuleConfig }) 
               <div className="font-700 text-xs text-text truncate" title={r.doc_name}>{r.doc_name}</div>
               {r.notes && <div className="text-xxxs text-text-3 truncate mt-0.5">{r.notes}</div>}
             </td>
-            <td className="p-table align-middle"><Badge label={r.category} colorClass="badge-slate"/></td>
+            <td className="p-table align-middle max-w-[110px]">
+              <div className="truncate" title={r.category}>
+                <Badge label={r.category} colorClass="badge-slate !text-[10px] py-0.5 px-2"/>
+              </div>
+            </td>
             <td className="p-table text-xs text-text-2 align-middle truncate max-w-40" title={r.company_name}>{r.company_name}</td>
             <td className="p-table whitespace-nowrap text-xs font-600 align-middle">{r.pic}</td>
             <td className="p-table whitespace-nowrap text-xs text-text-2 align-middle">{fmtDate(r.issue_date)}</td>
