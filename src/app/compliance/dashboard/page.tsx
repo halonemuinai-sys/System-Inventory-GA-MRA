@@ -98,6 +98,7 @@ interface SummaryData {
   kpi: { total: number; active: number; expiringSoon: number; expired: number };
   byModule: { module: string; label: string; total: number; critical: number }[];
   byExpiryStatus: { module: string; label: string; Valid: number; Warning: number; Critical: number; Expired: number }[];
+  byCompany: { name: string; total: number; expired: number; critical: number }[];
   criticalDocs: any[];
 }
 
@@ -108,22 +109,32 @@ export default function ComplianceDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
   const [time, setTime]       = useState(now());
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [selectedCompany, setSelectedCompany] = useState('');
 
   const axisColor = dark ? '#475569' : '#94a3b8';
   const gridColor = dark ? 'rgba(255,255,255,0.04)' : '#e2e8f0';
   const chevronColor = dark ? '#475569' : '#cbd5e1';
   const legendColor = dark ? '#64748b' : '#94a3b8';
 
+  useEffect(() => {
+    fetch('/api/assets/meta').then(r => r.json()).then(d => setCompanies(d.companies || [])).catch(() => {});
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      const res = await fetch('/api/legal-docs/summary?dept=compliance');
+      const qs = new URLSearchParams({ 
+        dept: 'compliance',
+        ...(selectedCompany && { company_id: selectedCompany })
+      });
+      const res = await fetch(`/api/legal-docs/summary?${qs}`);
       const j   = await res.json();
       if (!res.ok) throw new Error(j.error || 'Gagal memuat data');
       setData(j);
       setTime(now());
     } catch (e: any) { setError(e.message); } finally { setLoading(false); }
-  }, []);
+  }, [selectedCompany]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -156,10 +167,27 @@ export default function ComplianceDashboardPage() {
 
       {/* ── HEADER ── */}
       <div className="dash-header">
-        <h1>Compliance Department</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span className="dash-live">◆ LIVE</span>
-          <p className="dash-timestamp">Update: {time} WIB</p>
+        <div>
+          <h1>Compliance Department</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="dash-live">◆ LIVE</span>
+            <p className="dash-timestamp">Update: {time} WIB</p>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <select 
+            value={selectedCompany} 
+            onChange={e => setSelectedCompany(e.target.value)}
+            className="input-premium"
+            style={{ fontSize: '0.7rem', padding: '6px 12px', height: 'auto', width: '200px' }}
+            title="Filter Perusahaan"
+          >
+            <option value="">— Semua Perusahaan —</option>
+            {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <button className="dash-refresh-btn" onClick={load} title="Muat Ulang Data">
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+          </button>
         </div>
       </div>
 
@@ -307,6 +335,58 @@ export default function ComplianceDashboardPage() {
             </div>
           );
         })}
+      </div>
+
+      {/* ── BREAKDOWN PER COMPANY ── */}
+      <div style={{ marginTop: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <p className="sec-title" style={{ marginBottom: 0 }}>Health Status Per Perusahaan</p>
+          <span style={{ fontSize: '0.6rem', color: '#94a3b8', fontWeight: 600 }}>Menampilkan {data.byCompany.length} Entitas</span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+          {data.byCompany.map((co, idx) => {
+            const hasAlert = co.expired > 0 || co.critical > 0;
+            const statusColor = co.expired > 0 ? '#ef4444' : co.critical > 0 ? '#f59e0b' : '#10b981';
+            return (
+              <div 
+                key={idx} 
+                className="mod-card" 
+                style={{ 
+                  padding: '12px 14px', 
+                  border: hasAlert ? `1px solid ${statusColor}15` : undefined,
+                  borderLeft: `3px solid ${statusColor}`
+                }}
+              >
+                <p style={{ fontSize: '0.7rem', fontWeight: 800, color: dark ? '#e2e8f0' : '#1e293b', marginBottom: 8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={co.name}>
+                  {co.name}
+                </p>
+                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+                  <div>
+                    <p style={{ fontSize: '0.55rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>Total Dok</p>
+                    <p style={{ fontSize: '1.1rem', fontWeight: 900, color: dark ? '#f8fafc' : '#0f172a', lineHeight: 1 }}>{co.total}</p>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                    {co.expired > 0 && (
+                      <span style={{ fontSize: '0.55rem', fontWeight: 800, color: '#ef4444', background: 'rgba(239,68,68,0.1)', padding: '1px 5px', borderRadius: 4 }}>
+                        {co.expired} Expired
+                      </span>
+                    )}
+                    {co.critical > 0 && (
+                      <span style={{ fontSize: '0.55rem', fontWeight: 800, color: '#f59e0b', background: 'rgba(245,158,11,0.1)', padding: '1px 5px', borderRadius: 4 }}>
+                        {co.critical} Kritis
+                      </span>
+                    )}
+                    {!hasAlert && (
+                      <span style={{ fontSize: '0.55rem', fontWeight: 800, color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '1px 5px', borderRadius: 4 }}>
+                        Healthy
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* ── CHARTS ── */}
