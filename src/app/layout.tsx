@@ -70,6 +70,12 @@ const menuGroups = [
       { icon: Database, label: 'Master Data', href: '/master-data' },
     ],
   },
+  {
+    label: 'ADMIN',
+    items: [
+      { icon: Users, label: 'Manage Users', href: '/settings/users' },
+    ],
+  },
 ];
 
 // ── iOS-style toggle pill ──────────────────────────────────────

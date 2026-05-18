@@ -17,9 +17,10 @@ export const ROLE_HOME: Record<UserRole, string> = {
 
 // Route prefix → roles allowed (undefined = admin + ga only)
 export const ROUTE_RULES: { prefix: string; allowed: UserRole[] }[] = [
-  { prefix: '/legal',      allowed: ['admin', 'legal'] },
-  { prefix: '/compliance', allowed: ['admin', 'compliance'] },
-  { prefix: '/settings',   allowed: ['admin', 'ga', 'legal', 'compliance'] },
+  { prefix: '/settings/users', allowed: ['admin'] },
+  { prefix: '/legal',          allowed: ['admin', 'legal'] },
+  { prefix: '/compliance',     allowed: ['admin', 'compliance'] },
+  { prefix: '/settings',       allowed: ['admin', 'ga', 'legal', 'compliance'] },
   { prefix: '/barcode',    allowed: ['admin', 'ga'] },
   { prefix: '/stock-opname', allowed: ['admin', 'ga'] },
   { prefix: '/master-data',  allowed: ['admin', 'ga'] },
@@ -42,6 +43,7 @@ export const GROUP_ACCESS: Record<string, UserRole[]> = {
   'LEGAL':             ['admin', 'legal'],
   'COMPLIANCE':        ['admin', 'compliance'],
   'TOOLS':             ['admin', 'ga'],
+  'ADMIN':             ['admin'],
 };
 
 export function filterMenuGroups<T extends { label: string }>(
