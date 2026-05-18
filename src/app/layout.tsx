@@ -13,6 +13,7 @@ import {
   Gavel, UserCheck, Landmark, FlaskConical, AlertTriangle, X,
 } from 'lucide-react';
 import { ThemeProvider, useTheme } from '@/lib/theme';
+import { filterMenuGroups, getInitials, toRole, type UserRole } from '@/lib/role';
 
 const menuGroups = [
   {
@@ -220,6 +221,13 @@ function NotifPanel({ items, total, onClose }: { items: NotifItem[]; total: numb
   );
 }
 
+// ── Read a cookie value client-side ──────────────────────────
+function getCookie(name: string): string {
+  if (typeof document === 'undefined') return '';
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
 // ── Shell (uses theme) ─────────────────────────────────────────
 function Shell({ children }: { children: React.ReactNode }) {
   const pathname  = usePathname();
@@ -229,6 +237,12 @@ function Shell({ children }: { children: React.ReactNode }) {
   const [alertByModule, setAlertByModule]   = useState<Record<string, number>>({});
   const [notifItems, setNotifItems]         = useState<NotifItem[]>([]);
   const [notifOpen, setNotifOpen]           = useState(false);
+
+  // Role & user info from cookies (set by login action, not httpOnly)
+  const role     = toRole(getCookie('user_role'));
+  const fullName = getCookie('user_full_name');
+  const initials = fullName ? getInitials(fullName) : role.slice(0, 2).toUpperCase();
+  const visibleGroups = filterMenuGroups(menuGroups, role);
 
   // Close sidebar when navigating on mobile
   useEffect(() => {
@@ -286,7 +300,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="sidebar-menu">
-          {menuGroups.map((group) => (
+          {visibleGroups.map((group) => (
             <div key={group.label} className="mb-1">
               <p className="text-xxs-bold px-3.5 py-2.5 pb-1 text-text-3 uppercase letter-wide">
                 {group.label}
@@ -376,7 +390,7 @@ function Shell({ children }: { children: React.ReactNode }) {
                 />
               )}
             </div>
-            <div className="nav-avatar" aria-label="User Avatar">GA</div>
+            <div className="nav-avatar" aria-label="User Avatar" title={fullName || role}>{initials}</div>
           </div>
         </nav>
         <main>{children}</main>
