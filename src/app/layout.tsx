@@ -244,10 +244,16 @@ function Shell({ children }: { children: React.ReactNode }) {
   const [notifItems, setNotifItems]         = useState<NotifItem[]>([]);
   const [notifOpen, setNotifOpen]           = useState(false);
 
-  // Role & user info from cookies (set by login action, not httpOnly)
-  const role     = toRole(getCookie('user_role'));
-  const fullName = getCookie('user_full_name');
-  const initials = fullName ? getInitials(fullName) : role.slice(0, 2).toUpperCase();
+  // Role & user info — read AFTER hydration to avoid SSR mismatch
+  // (document.cookie not available during server render)
+  const [role, setRole]         = useState<UserRole>('ga');
+  const [fullName, setFullName] = useState('');
+  useEffect(() => {
+    setRole(toRole(getCookie('user_role')));
+    setFullName(getCookie('user_full_name'));
+  }, []);
+
+  const initials      = fullName ? getInitials(fullName) : role.slice(0, 2).toUpperCase();
   const visibleGroups = filterMenuGroups(menuGroups, role);
 
   // Close sidebar when navigating on mobile
