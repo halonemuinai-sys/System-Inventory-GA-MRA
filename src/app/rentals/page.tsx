@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Search, Plus, Eye, Edit2, Loader2, Save, HardDrive, AlertCircle, Trash2 } from 'lucide-react';
-import { Badge, ModalShell, FF, SLabel, PaginationBar, TableShell, InfoRow, SBox, FormError } from '@/components/PageShared';
+import { Search, Plus, Eye, Edit2, Loader2, Save, HardDrive, AlertCircle, Trash2, Download } from 'lucide-react';
+import { Badge, ModalShell, FF, PaginationBar, TableShell, InfoRow, SBox, FormError } from '@/components/PageShared';
 
 const fmt = (v: number) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(v || 0);
 const fmtDate = (d: string) => d ? new Date(d).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' }) : '—';
@@ -42,7 +42,8 @@ export default function RentalsPage() {
   const [formErr, setFormErr]       = useState('');
   
   const [deleteItem, setDeleteItem] = useState<{ id: number; name: string } | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  const [deleting, setDeleting]     = useState(false);
+  const [exporting, setExporting]   = useState(false);
   const LIMIT = 20;
 
   useEffect(() => {
@@ -137,11 +138,63 @@ export default function RentalsPage() {
 
   const totalVal = rows.reduce((s,r) => s + parseFloat(String(r.price||0)), 0);
 
+  const downloadCSV = async () => {
+    setExporting(true);
+    try {
+      const res  = await fetch('/api/rentals/export');
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Gagal ekspor');
+
+      const cols = [
+        'No', 'Order ID', 'Nama Item', 'Tipe Device', 'Unit Code',
+        'Perusahaan', 'Vendor', 'Harga/Bulan (Rp)', 'Durasi (Bln)',
+        'Mulai Sewa', 'Akhir Sewa', 'Departemen', 'Status',
+      ];
+
+      const escape = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+
+      const dataRows = (json.data as any[]).map((r, i) => [
+        i + 1,
+        r.order_id        ?? '',
+        r.item_name       ?? '',
+        r.device_type     ?? '',
+        r.unit_code       ?? '',
+        r.company         ?? '',
+        r.vendor_name     ?? '',
+        r.price           ?? 0,
+        r.duration_months ?? '',
+        r.start_rent ? new Date(r.start_rent).toLocaleDateString('id-ID') : '',
+        r.end_rent   ? new Date(r.end_rent).toLocaleDateString('id-ID')   : '',
+        r.department  ?? '',
+        r.status      ?? '',
+      ].map(escape).join(','));
+
+      const csv  = [cols.map(escape).join(','), ...dataRows].join('\r\n');
+      const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `device-rentals-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      alert('Gagal download: ' + e.message);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="container animate-fade-in pb-12">
       <div className="page-header">
         <div><h1 className="header-title">Device Rentals</h1><p className="header-subtitle">Kelola perangkat sewa, masa kontrak, dan vendor penyedia.</p></div>
-        <button className="btn btn-primary" onClick={openAdd} title="Tambah Rental Baru"><Plus size={16}/> Tambah Rental</button>
+        <div className="flex gap-2">
+          <button type="button" className="btn" onClick={downloadCSV} disabled={exporting} title="Download semua data sebagai CSV">
+            {exporting ? <Loader2 size={15} className="animate-spin"/> : <Download size={15}/>}
+            {exporting ? 'Mengekspor...' : 'Download Excel'}
+          </button>
+          <button type="button" className="btn btn-primary" onClick={openAdd} title="Tambah Rental Baru"><Plus size={16}/> Tambah Rental</button>
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -221,7 +274,7 @@ export default function RentalsPage() {
                   </>
                 )}
               </td></tr>
-            ) : rows.map((r,i) => {
+            ) : rows.map((r) => {
               const expired = r.end_rent && new Date(r.end_rent) < new Date();
               const st = STAT_C[expired ? 'Expired' : (r.status || 'Active')] || STAT_C.default;
               return (
@@ -241,9 +294,9 @@ export default function RentalsPage() {
                   <td className="td-p text-right"><Badge label={expired?'Expired':r.status||'—'} colorClass={st.colorClass}/></td>
                   <td className="td-p text-right">
                     <div className="flex-end gap-2">
-                      <button title="Lihat detail rental" aria-label={`Lihat detail ${r.item_name}`} onClick={()=>openDetail(r.id)} className="btn-icon"><Eye size={14}/></button>
-                      <button title="Edit data rental" aria-label={`Edit ${r.item_name}`} onClick={()=>openEdit(r.id)} className="btn-icon-blue"><Edit2 size={14}/></button>
-                      <button className="btn-icon text-rose hover:bg-rose-light" title="Hapus" aria-label={`Hapus ${r.item_name}`} onClick={() => confirmDelete({ id: r.id, name: r.item_name })}><Trash2 size={14}/></button>
+                      <button type="button" title="Lihat detail rental" aria-label={`Lihat detail ${r.item_name}`} onClick={()=>openDetail(r.id)} className="btn-icon"><Eye size={14}/></button>
+                      <button type="button" title="Edit data rental" aria-label={`Edit ${r.item_name}`} onClick={()=>openEdit(r.id)} className="btn-icon-blue"><Edit2 size={14}/></button>
+                      <button type="button" className="btn-icon text-rose hover:bg-rose-light" title="Hapus" aria-label={`Hapus ${r.item_name}`} onClick={() => confirmDelete({ id: r.id, name: r.item_name })}><Trash2 size={14}/></button>
                     </div>
                   </td>
                 </tr>
@@ -280,8 +333,8 @@ export default function RentalsPage() {
                 </SBox>
               </div>
               <div className="modal-footer-actions">
-                <button className="btn" onClick={()=>{setDetail(null);openEdit(detail.id);}} title="Edit Rental"><Edit2 size={14}/> Edit</button>
-                <button className="btn btn-primary" onClick={()=>setDetail(null)} title="Tutup Modal">Tutup</button>
+                <button type="button" className="btn" onClick={()=>{setDetail(null);openEdit(detail.id);}} title="Edit Rental"><Edit2 size={14}/> Edit</button>
+                <button type="button" className="btn btn-primary" onClick={()=>setDetail(null)} title="Tutup Modal">Tutup</button>
               </div>
             </div>
           )}
@@ -324,8 +377,8 @@ export default function RentalsPage() {
               </FF>
             </div>
             <div className="modal-footer-border">
-              <button className="btn" onClick={closeForm} disabled={saving} title="Batal">Batal</button>
-              <button className="btn btn-primary min-w-130" onClick={save} disabled={saving} title={editRow?'Simpan Perubahan':'Tambah Rental'}>
+              <button type="button" className="btn" onClick={closeForm} disabled={saving} title="Batal">Batal</button>
+              <button type="button" className="btn btn-primary min-w-130" onClick={save} disabled={saving} title={editRow?'Simpan Perubahan':'Tambah Rental'}>
                 {saving?<><Loader2 size={14} className="animate-spin"/> Menyimpan…</>:<><Save size={14}/> {editRow?'Simpan':'Tambah'}</>}
               </button>
             </div>
