@@ -8,7 +8,7 @@ import {
 import { ModalShell, FF, FormError } from '@/components/PageShared';
 
 // ── Types ─────────────────────────────────────────────────────
-type UserRole = 'admin' | 'ga' | 'legal' | 'compliance';
+type UserRole = 'admin' | 'ga' | 'legal' | 'compliance' | 'legal_compliance';
 
 interface AppUser {
   id: number;
@@ -23,15 +23,17 @@ interface AppUser {
 }
 
 // ── Constants ─────────────────────────────────────────────────
-const ROLES: { value: UserRole; label: string; color: string }[] = [
-  { value: 'admin',      label: 'Admin',      color: 'badge-rose'    },
-  { value: 'ga',         label: 'GA',         color: 'badge-indigo'  },
-  { value: 'legal',      label: 'Legal',      color: 'badge-violet'  },
-  { value: 'compliance', label: 'Compliance', color: 'badge-emerald' },
+const ROLES: { value: UserRole; label: string; color: string; desc: string }[] = [
+  { value: 'admin',           label: 'Admin',             color: 'badge-rose',    desc: 'Akses penuh semua menu'              },
+  { value: 'ga',              label: 'GA',                color: 'badge-indigo',  desc: 'Aset, kendaraan, vendor, dokumen'    },
+  { value: 'legal',           label: 'Legal',             color: 'badge-violet',  desc: 'Legal dashboard & modul'             },
+  { value: 'compliance',      label: 'Compliance',        color: 'badge-emerald', desc: 'Compliance dashboard & modul'        },
+  { value: 'legal_compliance',label: 'Legal & Compliance',color: 'badge-cyan',    desc: 'Legal + Compliance dashboard & modul'},
 ];
 
 const ROLE_COLOR: Record<string, string> = {
-  admin: 'badge-rose', ga: 'badge-indigo', legal: 'badge-violet', compliance: 'badge-emerald',
+  admin: 'badge-rose', ga: 'badge-indigo', legal: 'badge-violet',
+  compliance: 'badge-emerald', legal_compliance: 'badge-cyan',
 };
 
 const EMPTY_FORM = {
@@ -148,10 +150,10 @@ export default function UserSettingsPage() {
           <p className="header-subtitle">Kelola akun dan role akses untuk tiap departemen</p>
         </div>
         <div className="flex gap-2">
-          <button className="btn" onClick={load} title="Refresh">
+          <button type="button" className="btn" onClick={load} title="Refresh">
             <RefreshCw size={15} /> Refresh
           </button>
-          <button className="btn btn-primary" onClick={openAdd}>
+          <button type="button" className="btn btn-primary" onClick={openAdd}>
             <Plus size={15} /> Tambah User
           </button>
         </div>
@@ -162,12 +164,7 @@ export default function UserSettingsPage() {
         {ROLES.map(r => (
           <div key={r.value} className="flex items-center gap-2 px-3 py-1.5 bg-surface border border-border rounded-xl text-xs">
             <span className={`badge ${r.color}`}>{r.label}</span>
-            <span className="text-text-3">
-              {r.value === 'admin'      ? 'Akses penuh semua menu' :
-               r.value === 'ga'        ? 'Aset, kendaraan, vendor, dokumen' :
-               r.value === 'legal'     ? 'Legal dashboard & modul' :
-                                         'Compliance dashboard & modul'}
-            </span>
+            <span className="text-text-3">{r.desc}</span>
           </div>
         ))}
       </div>
@@ -179,7 +176,7 @@ export default function UserSettingsPage() {
         <div className="error-alert-container">
           <AlertCircle size={32} className="text-rose mb-2" />
           <p className="text-rose-bold">{error}</p>
-          <button className="btn btn-primary mt-3" onClick={load}><RefreshCw size={13}/> Coba Lagi</button>
+          <button type="button" className="btn btn-primary mt-3" onClick={load}><RefreshCw size={13}/> Coba Lagi</button>
         </div>
       ) : (
         <div className="card overflow-hidden">
@@ -220,11 +217,11 @@ export default function UserSettingsPage() {
                   </td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">
                     <div className="flex justify-end gap-1.5">
-                      <button className="btn-icon hover:bg-blue-light hover:text-blue border-transparent"
+                      <button type="button" className="btn-icon hover:bg-blue-light hover:text-blue border-transparent"
                         onClick={() => openEdit(u)} title="Edit User">
                         <Edit2 size={13} />
                       </button>
-                      <button
+                      <button type="button"
                         className={`btn-icon border-transparent ${u.is_active ? 'hover:bg-rose-light hover:text-rose' : 'hover:bg-emerald-light hover:text-emerald'}`}
                         onClick={() => toggleActive(u)}
                         title={u.is_active ? 'Nonaktifkan' : 'Aktifkan'}>
@@ -248,8 +245,8 @@ export default function UserSettingsPage() {
           closeOnClickOutside={false}
           footer={
             <div className="flex-end gap-3">
-              <button className="btn" onClick={closeForm} disabled={saving}>Batal</button>
-              <button className="btn btn-primary" onClick={save} disabled={saving} style={{ minWidth: 120 }}>
+              <button type="button" className="btn" onClick={closeForm} disabled={saving}>Batal</button>
+              <button type="button" className="btn btn-primary min-w-[120px]" onClick={save} disabled={saving}>
                 {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
                 {editUser ? 'Simpan Perubahan' : 'Buat User'}
               </button>
@@ -286,7 +283,8 @@ export default function UserSettingsPage() {
               <FF label="Role Akses" id="u_role" required>
                 <select id="u_role" value={form.role}
                   onChange={e => sf('role', e.target.value)}
-                  className="input-premium">
+                  className="input-premium"
+                  title="Role Akses">
                   {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
                 </select>
               </FF>
