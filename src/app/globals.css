@@ -400,8 +400,11 @@ body {
 .badge-emerald { background: var(--emerald-glow); color: var(--emerald); border: 1px solid var(--emerald-border); }
 .badge-amber   { background: var(--amber-glow);   color: var(--amber);   border: 1px solid var(--amber-border); }
 .badge-rose    { background: var(--rose-glow);    color: var(--rose);    border: 1px solid var(--rose-border); }
-.badge-indigo  { background: var(--indigo-light); color: var(--indigo); border: 1px solid var(--indigo); }
-.badge-slate   { background: #f1f5f9;            color: #64748b;        border: 1px solid #e2e8f0; }
+.badge-indigo  { background: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe; }
+.badge-violet  { background: #f5f3ff; color: #7c3aed; border: 1px solid #ddd6fe; }
+.badge-cyan    { background: #ecfeff; color: #0891b2; border: 1px solid #a5f3fc; }
+.badge-pink    { background: #fdf2f8; color: #db2777; border: 1px solid #fbcfe8; }
+.badge-slate   { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
 
 .modal-overlay {
   position: fixed; inset: 0; z-index: 1000;
@@ -1071,6 +1074,11 @@ html.dark .badge-emerald  { background: rgba(16,185,129,0.12);  color: #34d399; 
 html.dark .badge-amber    { background: rgba(245,158,11,0.12);  color: #fbbf24; border-color: rgba(245,158,11,0.22); }
 html.dark .badge-rose     { background: rgba(244,63,94,0.12);   color: #fb7185; border-color: rgba(244,63,94,0.22); }
 html.dark .badge-blue     { background: rgba(59,130,246,0.12);  color: #93c5fd; border-color: rgba(59,130,246,0.22); }
+html.dark .badge-indigo   { background: rgba(99,102,241,0.12);  color: #a5b4fc; border-color: rgba(99,102,241,0.22); }
+html.dark .badge-violet   { background: rgba(139,92,246,0.12);  color: #c084fc; border-color: rgba(139,92,246,0.22); }
+html.dark .badge-cyan     { background: rgba(6,182,212,0.12);   color: #22d3ee; border-color: rgba(6,182,212,0.22); }
+html.dark .badge-pink     { background: rgba(236,72,153,0.12);  color: #f472b6; border-color: rgba(236,72,153,0.22); }
+html.dark .badge-slate    { background: rgba(100,116,139,0.12); color: #94a3b8; border-color: rgba(100,116,139,0.22); }
 
 /* ── Buttons ────────────────────────────────────────────────── */
 html.dark .btn {
