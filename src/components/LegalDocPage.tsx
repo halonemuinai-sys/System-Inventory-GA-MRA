@@ -6,7 +6,7 @@ import {
   Loader2, Save, FileCheck, RefreshCw, ExternalLink, Upload,
 } from 'lucide-react';
 import {
-  Badge, ModalShell, FF, SLabel, PaginationBar,
+  Badge, ModalShell, FF, PaginationBar,
   TableShell, InfoRow, SBox, FormError,
 } from '@/components/PageShared';
 
@@ -266,21 +266,6 @@ export default function LegalDocPage({ config }: { config: LegalModuleConfig }) 
       setTotal(t => t - 1);
     } catch { alert('Gagal menghapus dokumen'); }
   };
-
-  // ── Table headers ────────────────────────────────────────────
-  const headers = [
-    { label: idLabel },
-    { label: 'Nama Dokumen' },
-    { label: 'Kategori' },
-    { label: 'Klasifikasi' },
-    { label: 'Perusahaan' },
-    { label: 'PIC' },
-    { label: 'Tgl Terbit' },
-    ...(requireExpiry ? [{ label: expiryLabel, right: true as const }] : []),
-    ...(requireExpiry ? [{ label: 'Expiry Status', right: true as const }] : []),
-    { label: 'Status Dok', right: true as const },
-    { label: 'Aksi', right: true as const },
-  ];
 
   return (
     <div className="container animate-fade-in pb-12">
@@ -643,7 +628,7 @@ export default function LegalDocPage({ config }: { config: LegalModuleConfig }) 
                   <select id="ld_conf" value={form.confidentiality}
                     onChange={e => sf('confidentiality', e.target.value)}
                     className="input-premium" title="Kerahasiaan">
-                    {CONF_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
+                    {CONFIDENTIALITY_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
                   </select>
                 </FF>
               </div>
