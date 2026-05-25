@@ -248,9 +248,99 @@ export default function Home() {
   }, []);
 
   if (loading) return (
-    <div className="flex-center h-82vh flex-col gap-4">
-      <div className="w-10 h-10 border-3 border-slate-200 border-t-blue rounded-full animate-spin" />
-      <p className="text-text-3 text-sm font-600">Loading dashboard data…</p>
+    <div className="container pb-20 max-w-1500 animate-pulse-shimmer">
+      {/* Header Skeleton */}
+      <div className="mb-7 mt-4">
+        <div className="h-6 w-64 bg-border rounded-md mb-2" />
+        <div className="h-4 w-96 bg-border rounded-md" />
+      </div>
+
+      {/* Row 1: 4 Cards */}
+      <div className="grid grid-cols-dash-hero gap-4 mb-4">
+        <div className="card flex flex-col gap-4 p-5 border-t-4 border-t-blue h-36">
+          <div className="flex justify-between items-start">
+            <div className="flex-1 space-y-2">
+              <div className="h-3 w-1/2 bg-border rounded-md" />
+              <div className="h-8 w-2/3 bg-border rounded-md" />
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-border" />
+          </div>
+          <div className="h-4 w-4/5 bg-border rounded-md mt-auto" />
+        </div>
+        <div className="card flex flex-col gap-4 p-5 border-t-4 border-t-indigo-600 h-36">
+          <div className="flex justify-between items-start">
+            <div className="flex-1 space-y-2">
+              <div className="h-3 w-1/2 bg-border rounded-md" />
+              <div className="h-8 w-2/3 bg-border rounded-md" />
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-border" />
+          </div>
+          <div className="h-4 w-4/5 bg-border rounded-md mt-auto" />
+        </div>
+        <div className="card flex flex-col gap-4 p-5 border-t-4 border-t-emerald h-36">
+          <div className="flex justify-between items-start">
+            <div className="flex-1 space-y-2">
+              <div className="h-3 w-1/2 bg-border rounded-md" />
+              <div className="h-8 w-2/3 bg-border rounded-md" />
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-border" />
+          </div>
+          <div className="h-4 w-4/5 bg-border rounded-md mt-auto" />
+        </div>
+        <div className="card flex flex-col gap-4 p-5 border-t-4 border-t-amber h-36">
+          <div className="flex justify-between items-start">
+            <div className="flex-1 space-y-2">
+              <div className="h-3 w-1/2 bg-border rounded-md" />
+              <div className="h-8 w-2/3 bg-border rounded-md" />
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-border" />
+          </div>
+          <div className="h-4 w-4/5 bg-border rounded-md mt-auto" />
+        </div>
+      </div>
+
+      {/* Row 2: 2 mini + 1 donut summary */}
+      <div className="grid grid-cols-dash-mini gap-4 mb-4">
+        <div className="card flex items-center justify-between p-5 border-t-4 border-t-rose h-24">
+          <div className="flex gap-4 items-center">
+            <div className="w-11 h-11 rounded-2xl bg-border" />
+            <div className="space-y-1.5 w-24">
+              <div className="h-3 bg-border rounded-md" />
+              <div className="h-5 bg-border rounded-md" />
+            </div>
+          </div>
+          <div className="w-16 h-10 rounded-xl bg-border" />
+        </div>
+        <div className="card flex items-center justify-between p-5 border-t-4 border-t-blue h-24">
+          <div className="flex gap-4 items-center">
+            <div className="w-11 h-11 rounded-2xl bg-border" />
+            <div className="space-y-1.5 w-24">
+              <div className="h-3 bg-border rounded-md" />
+              <div className="h-5 bg-border rounded-md" />
+            </div>
+          </div>
+          <div className="w-16 h-10 rounded-xl bg-border" />
+        </div>
+        <div className="card flex items-center gap-4 p-5 border-t-4 border-t-emerald h-24">
+          <div className="w-16 h-16 rounded-full bg-border shrink-0" />
+          <div className="flex-1 space-y-1.5">
+            <div className="h-3.5 bg-border rounded-md w-2/3" />
+            <div className="h-3 bg-border rounded-md w-1/2" />
+          </div>
+        </div>
+      </div>
+
+      {/* Row 3: 3 large grids */}
+      <div className="grid grid-cols-dash-charts gap-4">
+        <div className="card p-5 h-72 space-y-4">
+          <div className="h-4 w-1/3 bg-border rounded-md" />
+          <div className="h-48 bg-border rounded-xl" />
+        </div>
+        <div className="card p-5 h-72 space-y-4">
+          <div className="h-4 w-1/3 bg-border rounded-md" />
+          <div className="h-48 bg-border rounded-xl" />
+        </div>
+      </div>
     </div>
   );
 

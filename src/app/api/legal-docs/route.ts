@@ -19,10 +19,11 @@ const DAYS_EXPR = `
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
+    const isExport   = searchParams.get('export') === 'true';
     const module     = searchParams.get('module')     || '';
     const page       = parseInt(searchParams.get('page')   || '1');
-    const limit      = parseInt(searchParams.get('limit')  || '20');
-    const offset     = (page - 1) * limit;
+    const limit      = isExport ? 100000 : parseInt(searchParams.get('limit')  || '20');
+    const offset     = isExport ? 0 : (page - 1) * limit;
     const search     = searchParams.get('search')     || '';
     const category   = searchParams.get('category')   || '';
     const status     = searchParams.get('status')     || '';

@@ -1,17 +1,19 @@
+'use client';
+
 import LegalDocPage from '@/components/LegalDocPage';
-import { Building2 } from 'lucide-react';
+import { Building } from 'lucide-react';
+
+const CONFIG = {
+  module: 'corporate',
+  title: 'Corporate Legal Documents',
+  subtitle: 'Administrasi dokumen legal korporasi MRA Group.',
+  icon: <Building size={14} />,
+  categories: ['Akta Perusahaan', 'SK Menkumham', 'RUPS', 'Shareholder Resolution', 'Lainnya'],
+  idLabel: 'Nomor Dokumen',
+  expiryLabel: 'Tgl Berlaku / Review',
+  requireExpiry: false,
+};
 
 export default function CorporateLegalPage() {
-  return (
-    <LegalDocPage config={{
-      module:        'corporate',
-      title:         'Corporate Legal Documents',
-      subtitle:      'Administrasi dokumen legal korporasi MRA Group.',
-      icon:          <Building2 size={36}/>,
-      categories:    ['Akta Perusahaan', 'SK Menkumham', 'RUPS', 'Shareholder Resolution', 'Lainnya'],
-      idLabel:       'Nomor Dokumen',
-      expiryLabel:   'Tgl Berlaku / Review',
-      requireExpiry: false,
-    }}/>
-  );
+  return <LegalDocPage config={CONFIG} />;
 }

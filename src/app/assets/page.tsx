@@ -3,10 +3,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Search, Plus, Eye, Edit2, Save, AlertCircle,
-  Package, Tag, Building2, RefreshCw, Loader2, Trash2,
+  Package, Tag, Building2, RefreshCw, Loader2, Trash2, Download,
 } from 'lucide-react';
 import { 
-  Badge, ModalShell, FF, PaginationBar, TableShell, 
+  Badge, ModalShell, SlideOverShell, SkeletonCard, SkeletonTable, FF, PaginationBar, TableShell, 
   InfoRow, SBox, FormError, iStyle 
 } from '@/components/PageShared';
 
@@ -92,6 +92,8 @@ const STAT_CLS: Record<string, string> = {
 // ═════════════════════════════════════════════════════════════
 //  MAIN PAGE
 // ═════════════════════════════════════════════════════════════
+
+
 export default function AssetsPage() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [total, setTotal] = useState(0);
@@ -123,6 +125,11 @@ export default function AssetsPage() {
   const [deleteItem, setDeleteItem] = useState<{ id: number; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Bulk selection and actions state
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [deletingBulk, setDeletingBulk] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
   const LIMIT = 20;
 
   useEffect(() => {
@@ -134,6 +141,7 @@ export default function AssetsPage() {
 
   const fetchAssets = useCallback(async (p: number, filters = appliedFilters) => {
     setLoading(true); setError(null);
+    setSelectedIds([]); // Clear selection when page or filter changes
     try {
       const qs = new URLSearchParams({
         page: String(p), limit: String(LIMIT),
@@ -183,7 +191,7 @@ export default function AssetsPage() {
   // Pagination change effect
   useEffect(() => {
     if (hasSearched) fetchAssets(page, appliedFilters);
-  }, [page]); // only trigger when page changes (not on mount, unless desired)
+  }, [page]); // only trigger when page changes
 
   const confirmDelete = (item: { id: number; name: string }) => {
     setDeleteItem(item);
@@ -196,11 +204,111 @@ export default function AssetsPage() {
       const res = await fetch(`/api/assets/${deleteItem.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error();
       setAssets(prev => prev.filter(a => a.id !== deleteItem.id));
+      setSelectedIds(prev => prev.filter(id => id !== deleteItem.id));
       setDeleteItem(null);
     } catch { 
       alert('Gagal menghapus aset'); 
     } finally {
       setDeleting(false);
+    }
+  };
+
+  // Bulk actions handlers
+  const toggleSelect = (id: number) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    const allPageIds = assets.map(a => a.id);
+    const isAllSelected = allPageIds.every(id => selectedIds.includes(id));
+    if (isAllSelected) {
+      setSelectedIds(prev => prev.filter(id => !allPageIds.includes(id)));
+    } else {
+      setSelectedIds(prev => {
+        const next = [...prev];
+        allPageIds.forEach(id => {
+          if (!next.includes(id)) next.push(id);
+        });
+        return next;
+      });
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!confirm(`Apakah Anda yakin ingin menghapus ${selectedIds.length} aset terpilih?`)) return;
+    setDeletingBulk(true);
+    try {
+      await Promise.all(
+        selectedIds.map(id => fetch(`/api/assets/${id}`, { method: 'DELETE' }))
+      );
+      setSelectedIds([]);
+      fetchAssets(page, appliedFilters);
+      fetchKpi(appliedFilters);
+    } catch (err) {
+      alert('Gagal menghapus beberapa aset');
+    } finally {
+      setDeletingBulk(false);
+    }
+  };
+
+  const handleExportCSV = async () => {
+    setExporting(true);
+    try {
+      const qs = new URLSearchParams({
+        export: 'true',
+        ...(appliedFilters.search && { search: appliedFilters.search }),
+        ...(appliedFilters.cat && { category: appliedFilters.cat }),
+        ...(appliedFilters.stat && { status: appliedFilters.stat }),
+        ...(appliedFilters.comp && { company: appliedFilters.comp }),
+      });
+      const res = await fetch(`/api/assets?${qs}`);
+      if (!res.ok) throw new Error('Gagal mengekspor data');
+      const json = await res.json();
+      const data: Asset[] = json.data || [];
+      
+      // Build CSV content
+      const csvHeaders = ['Kode Aset', 'Nama Aset', 'Kategori', 'Tipe', 'Kondisi', 'Perusahaan', 'Nilai Perolehan', 'Status', 'Tgl Perolehan', 'Masa Manfaat', 'Spesifikasi'];
+      const escapeCSV = (val: any) => {
+        if (val === null || val === undefined) return '';
+        const str = String(val);
+        if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+          return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+      };
+      
+      const csvRows = [
+        csvHeaders.join(','),
+        ...data.map(a => [
+          escapeCSV(a.asset_code),
+          escapeCSV(a.asset_name),
+          escapeCSV(a.category),
+          escapeCSV(a.asset_type),
+          escapeCSV(a.condition),
+          escapeCSV(a.company),
+          escapeCSV(a.acquisition_cost),
+          escapeCSV(a.status),
+          escapeCSV(a.acquisition_date ? a.acquisition_date.split('T')[0] : ''),
+          escapeCSV(a.useful_life_months),
+          escapeCSV(a.details),
+        ].join(','))
+      ];
+      
+      const csvContent = '\uFEFF' + csvRows.join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `asset_inventory_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err: any) {
+      alert(err.message || 'Gagal mengekspor data');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -359,9 +467,21 @@ export default function AssetsPage() {
           {meta.statuses.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
 
-        <button className="btn btn-primary" onClick={handleSearch} title="Terapkan Filter">
-          Cari Data
-        </button>
+        <div className="flex gap-2 shrink-0">
+          <button className="btn btn-primary" onClick={handleSearch} title="Terapkan Filter">
+            Cari Data
+          </button>
+          
+          <button 
+            className="btn flex items-center gap-1.5" 
+            onClick={handleExportCSV} 
+            disabled={exporting}
+            title="Ekspor ke CSV"
+          >
+            {exporting ? <Loader2 size={14} className="animate-spin text-blue" /> : <Download size={14} className="text-blue" />}
+            Ekspor CSV
+          </button>
+        </div>
 
         <div className="summary-box">
           <div className="summary-item">
@@ -387,17 +507,32 @@ export default function AssetsPage() {
         <>
           <TableShell 
             headers={[
+              {
+                label: (
+                  <input
+                    type="checkbox"
+                    className="checkbox-premium"
+                    checked={assets.length > 0 && assets.every(a => selectedIds.includes(a.id))}
+                    onChange={toggleSelectAll}
+                    title="Pilih semua baris"
+                  />
+                ),
+                width: 44,
+                isCheckbox: true
+              },
               {label:'Kode'}, {label:'Nama Aset'}, {label:'Kategori'}, 
               {label:'Kondisi'}, {label:'Perusahaan'}, 
               {label:'Acq. Cost', right:true}, {label:'Status', right:true}, 
               {label:'Aksi', right:true}
             ]} 
-            loading={loading} 
-            colSpan={8}
+            loading={false} 
+            colSpan={9}
           >
-            {assets.length === 0 ? (
+            {loading ? (
+              <SkeletonTable colSpan={9} rowCount={10} />
+            ) : assets.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-14 text-center">
+                <td colSpan={9} className="py-14 text-center">
                   <Package size={36} className="text-text-3 mx-auto mb-3 block" />
                   {hasSearched ? (
                     <>
@@ -413,7 +548,16 @@ export default function AssetsPage() {
                 </td>
               </tr>
             ) : assets.map((a, i) => (
-              <tr key={a.id} className="hover-row">
+              <tr key={a.id} className={`hover-row ${selectedIds.includes(a.id) ? 'bg-blue-light/30' : ''}`}>
+                <td className="td-checkbox">
+                  <input
+                    type="checkbox"
+                    className="checkbox-premium"
+                    checked={selectedIds.includes(a.id)}
+                    onChange={() => toggleSelect(a.id)}
+                    title={`Pilih ${a.asset_name}`}
+                  />
+                </td>
                 <td className="td-p font-mono text-blue text-xs font-700">
                   {a.asset_code || '—'}
                 </td>
@@ -458,170 +602,208 @@ export default function AssetsPage() {
         </>
       )}
 
-      {/* DETAIL MODAL */}
-      {(detailAsset || detailLoading) && (
-        <ModalShell title={detailAsset ? `Detail Aset — ${detailAsset.asset_code || ''}` : 'Memuat...'} onClose={() => setDetailAsset(null)} size="md">
-          {detailLoading || !detailAsset ? (
-            <div className="flex-center py-12">
-              <Loader2 size={28} className="animate-spin text-blue" />
-            </div>
-          ) : (
-            <div className="flex flex-col gap-5">
-              <div>
-                <h2 className="text-lg-black mb-2">{detailAsset.asset_name}</h2>
-                <div className="flex gap-2 flex-wrap">
-                  <Badge label={detailAsset.status || '—'} colorClass={STAT_CLS[detailAsset.status] || 'badge-slate'} />
-                  <Badge label={detailAsset.condition || '—'} colorClass={COND_CLS[detailAsset.condition] || 'badge-slate'} />
-                  {detailAsset.category && <Badge label={detailAsset.category} colorClass="badge-indigo" />}
-                </div>
-              </div>
-
-              <div className="detail-grid">
-                <SBox title="Identifikasi">
-                  <InfoRow label="Kode Aset" value={detailAsset.asset_code || '—'} />
-                  <InfoRow label="Kategori"  value={detailAsset.category || '—'} />
-                  <InfoRow label="Tipe"      value={detailAsset.asset_type || '—'} />
-                  <InfoRow label="Perusahaan" value={detailAsset.company || '—'} />
-                </SBox>
-                <SBox title="Finansial">
-                  <InfoRow label="Tgl. Perolehan" value={detailAsset.acquisition_date ? new Date(detailAsset.acquisition_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'} />
-                  <InfoRow label="Nilai Perolehan" value={`Rp ${fmt(parseFloat(String(detailAsset.acquisition_cost || 0)))}`} />
-                  <InfoRow label="Masa Manfaat" value={detailAsset.useful_life_months ? `${detailAsset.useful_life_months} bulan` : '—'} />
-                  <InfoRow label="Dep./bulan" value={detailAsset.useful_life_months && detailAsset.acquisition_cost ? `Rp ${fmt(parseFloat(String(detailAsset.acquisition_cost)) / detailAsset.useful_life_months)}` : '—'} />
-                </SBox>
-              </div>
-
-              {(detailAsset.location_name || detailAsset.room || detailAsset.pic_name) && (
-                <SBox title="Lokasi & PIC">
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <p className="text-xs-muted-bold">Lokasi</p>
-                      <p className="text-sm-bold text-text">{detailAsset.location_name || '—'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs-muted-bold">Ruangan</p>
-                      <p className="text-sm-bold text-text">{detailAsset.room || '—'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs-muted-bold">PIC</p>
-                      <p className="text-sm-bold text-text">{detailAsset.pic_name || '—'}</p>
-                    </div>
-                  </div>
-                </SBox>
-              )}
-
-              {(detailAsset.details || (detailAsset as any).information) && (
-                <div className="flex flex-col gap-2">
-                  {detailAsset.details && (
-                    <div className="info-card">
-                      <p className="text-xs-bold mb-1">Detail</p>
-                      <p className="text-sm-muted lh-1-6">{detailAsset.details}</p>
-                    </div>
-                  )}
-                  {(detailAsset as any).information && (
-                    <div className="info-card">
-                      <p className="text-xs-bold mb-1">Informasi</p>
-                      <p className="text-sm-muted lh-1-6">{(detailAsset as any).information}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="modal-footer-info">
-                <div className="text-xs-muted">
-                  Dibuat: <span className="font-medium text-text-2">{detailAsset.created_at ? new Date(detailAsset.created_at).toLocaleString('id-ID') : '—'}</span>
-                </div>
-                <div className="text-xs-muted">
-                  Diperbarui: <span className="font-medium text-text-2">{detailAsset.updated_at ? new Date(detailAsset.updated_at).toLocaleString('id-ID') : '—'}</span>
-                </div>
-              </div>
-
-              <div className="modal-footer-actions">
-                <button className="btn" onClick={() => { setDetailAsset(null); openEdit(detailAsset.id); }}>
-                  <Edit2 size={14} /> Edit
-                </button>
-                <button className="btn btn-primary" onClick={() => setDetailAsset(null)}>Tutup</button>
-              </div>
-            </div>
-          )}
-        </ModalShell>
+      {/* FLOATING BULK ACTIONS BAR */}
+      {selectedIds.length > 0 && (
+        <div className="bulk-actions-bar">
+          <span className="bulk-actions-text">
+            {selectedIds.length} item terpilih
+          </span>
+          <div className="bulk-actions-divider" />
+          <div className="bulk-actions-buttons">
+            <button
+              type="button"
+              className="btn py-1 px-3 text-xs bg-rose text-white border-none hover:opacity-90 flex items-center gap-1"
+              onClick={handleBulkDelete}
+              disabled={deletingBulk}
+            >
+              <Trash2 size={13} />
+              {deletingBulk ? 'Menghapus...' : 'Hapus Terpilih'}
+            </button>
+            <button
+              type="button"
+              className="btn py-1 px-3 text-xs bg-slate-200 text-text border-none hover:bg-slate-300"
+              onClick={() => setSelectedIds([])}
+              disabled={deletingBulk}
+            >
+              Batal
+            </button>
+          </div>
+        </div>
       )}
 
-      {/* FORM MODAL */}
-      {(showAdd || editAsset) && (
-        <ModalShell title={editAsset ? `Edit Aset — ${editAsset.asset_code || editAsset.asset_name}` : 'Tambah Aset Baru'} onClose={closeForm} size="md" closeOnClickOutside={false}>
-          <div className="flex flex-col gap-4">
-            <FormError msg={formError} />
-            <div className="detail-grid">
-              <FF label="Perusahaan" id="ast_co" required>
-                <select id="ast_co" value={form.company_id} onChange={e => setForm({ ...form, company_id: e.target.value })} className="input-premium" title="Pilih Perusahaan">
-                  <option value="">— Pilih —</option>
-                  {meta.companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </FF>
-              <FF label="Nama Aset" id="ast_name" required>
-                <input id="ast_name" type="text" placeholder="MacBook Pro 16" value={form.asset_name} onChange={e => setForm({ ...form, asset_name: e.target.value })} className="input-premium" title="Nama Aset" />
-              </FF>
+      {/* DETAIL DRAWER */}
+      <SlideOverShell 
+        isOpen={!!detailAsset || detailLoading} 
+        onClose={() => setDetailAsset(null)}
+        title={detailAsset ? `Detail Aset — ${detailAsset.asset_code || ''}` : 'Memuat...'}
+        size="md"
+      >
+        {detailLoading || !detailAsset ? (
+          <div className="flex-center py-12">
+            <Loader2 size={28} className="animate-spin text-blue" />
+          </div>
+        ) : (
+          <div className="flex flex-col gap-5">
+            <div>
+              <h2 className="text-lg-black mb-2">{detailAsset.asset_name}</h2>
+              <div className="flex gap-2 flex-wrap">
+                <Badge label={detailAsset.status || '—'} colorClass={STAT_CLS[detailAsset.status] || 'badge-slate'} />
+                <Badge label={detailAsset.condition || '—'} colorClass={COND_CLS[detailAsset.condition] || 'badge-slate'} />
+                {detailAsset.category && <Badge label={detailAsset.category} colorClass="badge-indigo" />}
+              </div>
             </div>
+
             <div className="detail-grid">
-              <FF label="Kode Aset" id="ast_code">
-                <input id="ast_code" type="text" placeholder="Auto-generate jika kosong" value={form.asset_code} onChange={e => setForm({ ...form, asset_code: e.target.value })} className="input-premium" title="Kode Aset" />
-              </FF>
-              <FF label="Kategori Aset" id="ast_cat">
-                <select id="ast_cat" value={form.asset_category_id} onChange={e => setForm({ ...form, asset_category_id: e.target.value, asset_type_id: '' })} className="input-premium" title="Pilih Kategori">
-                  <option value="">— Pilih —</option>
-                  {meta.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </FF>
+              <SBox title="Identifikasi">
+                <InfoRow label="Kode Aset" value={detailAsset.asset_code || '—'} />
+                <InfoRow label="Kategori"  value={detailAsset.category || '—'} />
+                <InfoRow label="Tipe"      value={detailAsset.asset_type || '—'} />
+                <InfoRow label="Perusahaan" value={detailAsset.company || '—'} />
+              </SBox>
+              <SBox title="Finansial">
+                <InfoRow label="Tgl. Perolehan" value={detailAsset.acquisition_date ? new Date(detailAsset.acquisition_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'} />
+                <InfoRow label="Nilai Perolehan" value={`Rp ${fmt(parseFloat(String(detailAsset.acquisition_cost || 0)))}`} />
+                <InfoRow label="Masa Manfaat" value={detailAsset.useful_life_months ? `${detailAsset.useful_life_months} bulan` : '—'} />
+                <InfoRow label="Dep./bulan" value={detailAsset.useful_life_months && detailAsset.acquisition_cost ? `Rp ${fmt(parseFloat(String(detailAsset.acquisition_cost)) / detailAsset.useful_life_months)}` : '—'} />
+              </SBox>
             </div>
-            <div className="detail-grid">
-              <FF label="Tipe Aset" id="ast_type">
-                <select id="ast_type" value={form.asset_type_id} onChange={e => setForm({ ...form, asset_type_id: e.target.value })} className="input-premium" title="Pilih Tipe">
-                  <option value="">— Pilih —</option>
-                  {filteredTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                </select>
-              </FF>
-              <FF label="Kondisi" id="ast_cond">
-                <select id="ast_cond" value={form.condition_id} onChange={e => setForm({ ...form, condition_id: e.target.value })} className="input-premium" title="Pilih Kondisi">
-                  <option value="">— Pilih —</option>
-                  {meta.conditions.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </FF>
+
+            {(detailAsset.location_name || detailAsset.room || detailAsset.pic_name) && (
+              <SBox title="Lokasi & PIC">
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <p className="text-xs-muted-bold">Lokasi</p>
+                    <p className="text-sm-bold text-text">{detailAsset.location_name || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs-muted-bold">Ruangan</p>
+                    <p className="text-sm-bold text-text">{detailAsset.room || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs-muted-bold">PIC</p>
+                    <p className="text-sm-bold text-text">{detailAsset.pic_name || '—'}</p>
+                  </div>
+                </div>
+              </SBox>
+            )}
+
+            {(detailAsset.details || detailAsset.information) && (
+              <div className="flex flex-col gap-2">
+                {detailAsset.details && (
+                  <div className="info-card">
+                    <p className="text-xs-bold mb-1">Detail</p>
+                    <p className="text-sm-muted lh-1-6">{detailAsset.details}</p>
+                  </div>
+                )}
+                {detailAsset.information && (
+                  <div className="info-card">
+                    <p className="text-xs-bold mb-1">Informasi</p>
+                    <p className="text-sm-muted lh-1-6">{detailAsset.information}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="modal-footer-info">
+              <div className="text-xs-muted">
+                Dibuat: <span className="font-medium text-text-2">{detailAsset.created_at ? new Date(detailAsset.created_at).toLocaleString('id-ID') : '—'}</span>
+              </div>
+              <div className="text-xs-muted">
+                Diperbarui: <span className="font-medium text-text-2">{detailAsset.updated_at ? new Date(detailAsset.updated_at).toLocaleString('id-ID') : '—'}</span>
+              </div>
             </div>
-            <div className="detail-grid">
-              <FF label="Status Aset" id="ast_stat">
-                <select id="ast_stat" value={form.status_id} onChange={e => setForm({ ...form, status_id: e.target.value })} className="input-premium" title="Pilih Status">
-                  <option value="">— Pilih —</option>
-                  {meta.statuses.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </FF>
-              <FF label="Tanggal Perolehan" id="ast_acq">
-                <input id="ast_acq" type="date" value={form.acquisition_date} onChange={e => setForm({ ...form, acquisition_date: e.target.value })} className="input-premium" title="Tanggal Perolehan" />
-              </FF>
-            </div>
-            <div className="detail-grid">
-              <FF label="Nilai Perolehan (Rp)" id="ast_cost">
-                <input id="ast_cost" type="text" placeholder="0" value={fmtCurrency(form.acquisition_cost)} onChange={e => setForm({ ...form, acquisition_cost: e.target.value.replace(/\D/g, '') })} className="input-premium" title="Nilai Perolehan" />
-              </FF>
-              <FF label="Masa Manfaat (bulan)" id="ast_life">
-                <input id="ast_life" type="number" placeholder="60" min={1} value={form.useful_life_months} onChange={e => setForm({ ...form, useful_life_months: e.target.value })} className="input-premium" title="Masa Manfaat (bulan)" />
-              </FF>
-            </div>
-            <FF label="Detail / Spesifikasi" id="ast_detail">
-              <textarea id="ast_detail" placeholder="Spesifikasi teknis..." value={form.details} onChange={e => setForm({ ...form, details: e.target.value })} rows={2} className="input-premium resize-y" title="Detail / Spesifikasi" />
-            </FF>
-            <FF label="Informasi Tambahan" id="ast_info">
-              <textarea id="ast_info" placeholder="Catatan lain..." value={form.information} onChange={e => setForm({ ...form, information: e.target.value })} rows={2} className="input-premium resize-y" title="Informasi Tambahan" />
-            </FF>
-            <div className="modal-footer-border">
-              <button className="btn" onClick={closeForm} disabled={saving} title="Batal">Batal</button>
-              <button className="btn btn-primary min-w-130" onClick={handleSave} disabled={saving} title={editAsset ? 'Simpan Perubahan' : 'Tambah Aset'}>
-                {saving ? <><Loader2 size={14} className="animate-spin" /> Menyimpan…</> : <><Save size={14} /> {editAsset ? 'Simpan' : 'Tambah'}</>}
+
+            <div className="modal-footer-actions">
+              <button className="btn" onClick={() => { setDetailAsset(null); openEdit(detailAsset.id); }}>
+                <Edit2 size={14} /> Edit
               </button>
+              <button className="btn btn-primary" onClick={() => setDetailAsset(null)}>Tutup</button>
             </div>
           </div>
-        </ModalShell>
-      )}
+        )}
+      </SlideOverShell>
+
+      {/* FORM DRAWER */}
+      <SlideOverShell 
+        isOpen={showAdd || !!editAsset} 
+        onClose={closeForm} 
+        title={editAsset ? `Edit Aset — ${editAsset.asset_code || editAsset.asset_name}` : 'Tambah Aset Baru'} 
+        size="md" 
+        closeOnClickOutside={false}
+        footer={
+          <>
+            <button className="btn" onClick={closeForm} disabled={saving} title="Batal">Batal</button>
+            <button className="btn btn-primary min-w-130" onClick={handleSave} disabled={saving} title={editAsset ? 'Simpan Perubahan' : 'Tambah Aset'}>
+              {saving ? <><Loader2 size={14} className="animate-spin" /> Menyimpan…</> : <><Save size={14} /> {editAsset ? 'Simpan' : 'Tambah'}</>}
+            </button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-4">
+          <FormError msg={formError} />
+          <div className="detail-grid">
+            <FF label="Perusahaan" id="ast_co" required>
+              <select id="ast_co" value={form.company_id} onChange={e => setForm({ ...form, company_id: e.target.value })} className="input-premium" title="Pilih Perusahaan">
+                <option value="">— Pilih —</option>
+                {meta.companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </FF>
+            <FF label="Nama Aset" id="ast_name" required>
+              <input id="ast_name" type="text" placeholder="MacBook Pro 16" value={form.asset_name} onChange={e => setForm({ ...form, asset_name: e.target.value })} className="input-premium" title="Nama Aset" />
+            </FF>
+          </div>
+          <div className="detail-grid">
+            <FF label="Kode Aset" id="ast_code">
+              <input id="ast_code" type="text" placeholder="Auto-generate jika kosong" value={form.asset_code} onChange={e => setForm({ ...form, asset_code: e.target.value })} className="input-premium" title="Kode Aset" />
+            </FF>
+            <FF label="Kategori Aset" id="ast_cat">
+              <select id="ast_cat" value={form.asset_category_id} onChange={e => setForm({ ...form, asset_category_id: e.target.value, asset_type_id: '' })} className="input-premium" title="Pilih Kategori">
+                <option value="">— Pilih —</option>
+                {meta.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </FF>
+          </div>
+          <div className="detail-grid">
+            <FF label="Tipe Aset" id="ast_type">
+              <select id="ast_type" value={form.asset_type_id} onChange={e => setForm({ ...form, asset_type_id: e.target.value })} className="input-premium" title="Pilih Tipe">
+                <option value="">— Pilih —</option>
+                {filteredTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+            </FF>
+            <FF label="Kondisi" id="ast_cond">
+              <select id="ast_cond" value={form.condition_id} onChange={e => setForm({ ...form, condition_id: e.target.value })} className="input-premium" title="Pilih Kondisi">
+                <option value="">— Pilih —</option>
+                {meta.conditions.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </FF>
+          </div>
+          <div className="detail-grid">
+            <FF label="Status Aset" id="ast_stat">
+              <select id="ast_stat" value={form.status_id} onChange={e => setForm({ ...form, status_id: e.target.value })} className="input-premium" title="Pilih Status">
+                <option value="">— Pilih —</option>
+                {meta.statuses.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </FF>
+            <FF label="Tanggal Perolehan" id="ast_acq">
+              <input id="ast_acq" type="date" value={form.acquisition_date} onChange={e => setForm({ ...form, acquisition_date: e.target.value })} className="input-premium" title="Tanggal Perolehan" />
+            </FF>
+          </div>
+          <div className="detail-grid">
+            <FF label="Nilai Perolehan (Rp)" id="ast_cost">
+              <input id="ast_cost" type="text" placeholder="0" value={fmtCurrency(form.acquisition_cost)} onChange={e => setForm({ ...form, acquisition_cost: e.target.value.replace(/\D/g, '') })} className="input-premium" title="Nilai Perolehan" />
+            </FF>
+            <FF label="Masa Manfaat (bulan)" id="ast_life">
+              <input id="ast_life" type="number" placeholder="60" min={1} value={form.useful_life_months} onChange={e => setForm({ ...form, useful_life_months: e.target.value })} className="input-premium" title="Masa Manfaat (bulan)" />
+            </FF>
+          </div>
+          <FF label="Detail / Spesifikasi" id="ast_detail">
+            <textarea id="ast_detail" placeholder="Spesifikasi teknis..." value={form.details} onChange={e => setForm({ ...form, details: e.target.value })} rows={2} className="input-premium resize-y" title="Detail / Spesifikasi" />
+          </FF>
+          <FF label="Informasi Tambahan" id="ast_info">
+            <textarea id="ast_info" placeholder="Catatan lain..." value={form.information} onChange={e => setForm({ ...form, information: e.target.value })} rows={2} className="input-premium resize-y" title="Informasi Tambahan" />
+          </FF>
+        </div>
+      </SlideOverShell>
       {deleteItem && (
         <ModalShell 
           title="" 

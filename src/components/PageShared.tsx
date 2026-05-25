@@ -158,7 +158,7 @@ export function PaginationBar({ page, limit, total, totalPages, onChange }: { pa
 
 // ── Table shell ───────────────────────────────────────────────
 export function TableShell({ headers, children, loading, colSpan }: {
-  headers: { label: string; right?: boolean; width?: string | number }[];
+  headers: { label: React.ReactNode; right?: boolean; width?: string | number; isCheckbox?: boolean }[];
   children: React.ReactNode;
   loading?: boolean;
   colSpan: number;
@@ -171,7 +171,9 @@ export function TableShell({ headers, children, loading, colSpan }: {
             {headers.map((h, i) => (
               <th 
                 key={i} 
-                className={`text-xs-bold p-table border-b border-border whitespace-nowrap ${h.right ? 'text-right pr-6' : 'text-left'}`}
+                className={`text-xs-bold border-b border-border whitespace-nowrap ${
+                  h.isCheckbox ? 'th-checkbox align-middle' : 'p-table ' + (h.right ? 'text-right pr-6' : 'text-left')
+                }`}
                 style={h.width ? { width: h.width } : {}}
               >
                 {h.label}
@@ -215,3 +217,81 @@ export function SBox({ icon, title, children }: { icon?: React.ReactNode; title:
     </div>
   );
 }
+
+// ── Slide-over drawer container ────────────────────────────────
+export function SlideOverShell({
+  isOpen,
+  onClose,
+  title,
+  children,
+  footer,
+  size = 'md',
+  closeOnClickOutside = true,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+  size?: 'sm' | 'md' | 'lg' | 'xl';
+  closeOnClickOutside?: boolean;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div 
+      className="drawer-overlay" 
+      onClick={e => { if (closeOnClickOutside && e.target === e.currentTarget) onClose(); }}
+    >
+      <div className={`drawer-container drawer-${size}`}>
+        {title && (
+          <div className="drawer-header">
+            <span className="drawer-title">{title}</span>
+            <button 
+              type="button"
+              onClick={onClose} 
+              className="btn-icon" 
+              title="Tutup"
+              aria-label="Tutup panel"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        )}
+        <div className="drawer-body">{children}</div>
+        {footer && <div className="drawer-footer">{footer}</div>}
+      </div>
+    </div>
+  );
+}
+
+// ── Skeleton components for shimmer loading ─────────────────────
+export function SkeletonCard({ className = '' }: { className?: string }) {
+  return (
+    <div className={`card animate-pulse-shimmer flex flex-col gap-3 p-5 ${className}`}>
+      <div className="h-3 w-2/5 bg-border rounded-md" />
+      <div className="h-8 w-3/5 bg-border rounded-md" />
+      <div className="h-4 w-4/5 bg-border rounded-md mt-2" />
+    </div>
+  );
+}
+
+export function SkeletonTable({ colSpan, rowCount = 5 }: { colSpan: number; rowCount?: number }) {
+  return (
+    <>
+      {Array.from({ length: rowCount }).map((_, rIdx) => (
+        <tr key={rIdx} className="border-b border-border-subtle animate-pulse-shimmer">
+          {Array.from({ length: colSpan }).map((_, cIdx) => (
+            <td key={cIdx} className="p-table py-4">
+              <div 
+                className="h-3.5 bg-border rounded-md" 
+                style={{ width: cIdx === 0 ? '60%' : cIdx === colSpan - 1 ? '40%' : '80%' }} 
+              />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
+  );
+}
+

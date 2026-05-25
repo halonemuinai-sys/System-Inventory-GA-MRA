@@ -3,10 +3,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Search, Plus, Eye, Edit2, Trash2, AlertCircle,
-  Loader2, Save, FileCheck, RefreshCw, ExternalLink, Upload,
+  Loader2, Save, FileCheck, RefreshCw, ExternalLink, Upload, Download,
 } from 'lucide-react';
 import {
-  Badge, ModalShell, FF, PaginationBar,
+  Badge, ModalShell, SlideOverShell, SkeletonTable, FF, PaginationBar,
   TableShell, InfoRow, SBox, FormError,
 } from '@/components/PageShared';
 
@@ -110,6 +110,12 @@ export default function LegalDocPage({ config }: { config: LegalModuleConfig }) 
   const [saving, setSaving]         = useState(false);
   const [formErr, setFormErr]       = useState('');
   const [importing, setImporting]   = useState(false);
+  const [exporting, setExporting]   = useState(false);
+
+  // Selection states
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [deletingBulk, setDeletingBulk] = useState(false);
+
   const LIMIT = 20;
 
   useEffect(() => {
@@ -128,7 +134,7 @@ export default function LegalDocPage({ config }: { config: LegalModuleConfig }) 
       const lines = text.split(/\r?\n/).filter(l => l.trim());
       if (lines.length < 2) throw new Error('File kosong atau tidak valid');
 
-      const headers = lines[0].split(',').map(h => h.trim());
+      const csvHeaders = lines[0].split(',').map(h => h.trim());
       const dataRows = lines.slice(1);
       
       const MOD_MAP: Record<string, string> = {
@@ -142,10 +148,10 @@ export default function LegalDocPage({ config }: { config: LegalModuleConfig }) 
 
       for (const row of dataRows) {
         const values = row.split(',').map(v => v.trim());
-        if (values.length < headers.length) continue;
+        if (values.length < csvHeaders.length) continue;
 
         const rowData: any = {};
-        headers.forEach((h, i) => { rowData[h] = values[i]; });
+        csvHeaders.forEach((h, i) => { rowData[h] = values[i]; });
 
         const targetModule = MOD_MAP[rowData['Modul (Menu)']] || module;
 
@@ -188,6 +194,7 @@ export default function LegalDocPage({ config }: { config: LegalModuleConfig }) 
 
   const load = useCallback(async (p: number) => {
     setLoading(true); setError(null);
+    setSelectedIds([]); // Clear selection on load
     try {
       const qs = new URLSearchParams({
         module, page: String(p), limit: String(LIMIT),
@@ -267,6 +274,117 @@ export default function LegalDocPage({ config }: { config: LegalModuleConfig }) 
     } catch { alert('Gagal menghapus dokumen'); }
   };
 
+  // Bulk actions handlers
+  const toggleSelect = (id: number) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    const allPageIds = rows.map(r => r.id);
+    const isAllSelected = allPageIds.every(id => selectedIds.includes(id));
+    if (isAllSelected) {
+      setSelectedIds(prev => prev.filter(id => !allPageIds.includes(id)));
+    } else {
+      setSelectedIds(prev => {
+        const next = [...prev];
+        allPageIds.forEach(id => {
+          if (!next.includes(id)) next.push(id);
+        });
+        return next;
+      });
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!confirm(`Apakah Anda yakin ingin menghapus ${selectedIds.length} dokumen terpilih?`)) return;
+    setDeletingBulk(true);
+    try {
+      await Promise.all(
+        selectedIds.map(id => fetch(`/api/legal-docs/${id}`, { method: 'DELETE' }))
+      );
+      setSelectedIds([]);
+      load(page);
+    } catch (err) {
+      alert('Gagal menghapus beberapa dokumen');
+    } finally {
+      setDeletingBulk(false);
+    }
+  };
+
+  const handleExportCSV = async () => {
+    setExporting(true);
+    try {
+      const qs = new URLSearchParams({
+        module,
+        export: 'true',
+        ...(search        && { search }),
+        ...(catFilter     && { category: catFilter }),
+        ...(compFilter    && { company_id: compFilter }),
+        ...(statFilter    && { status: statFilter }),
+        ...(docStatFilter && { doc_status: docStatFilter }),
+        ...(confFilter    && { confidentiality: confFilter }),
+      });
+      const res = await fetch(`/api/legal-docs?${qs}`);
+      if (!res.ok) throw new Error('Gagal mengekspor data');
+      const json = await res.json();
+      const data = json.data || [];
+
+      const csvHeaders = [
+        idLabel || 'Nomor Dokumen',
+        'Nama Dokumen',
+        'Kategori',
+        'Perusahaan',
+        'PIC',
+        'Tanggal Terbit',
+        expiryLabel || 'Tanggal Kadaluarsa',
+        'Klasifikasi',
+        'Status Dokumen',
+        'Catatan'
+      ];
+      
+      const escapeCSV = (val: any) => {
+        if (val === null || val === undefined) return '';
+        const str = String(val);
+        if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+          return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+      };
+
+      const csvRows = [
+        csvHeaders.join(','),
+        ...data.map((r: any) => [
+          escapeCSV(r.id_number),
+          escapeCSV(r.doc_name),
+          escapeCSV(r.category),
+          escapeCSV(r.company_name),
+          escapeCSV(r.pic),
+          escapeCSV(r.issue_date ? r.issue_date.split('T')[0] : ''),
+          escapeCSV(r.expiry_date ? r.expiry_date.split('T')[0] : ''),
+          escapeCSV(r.confidentiality),
+          escapeCSV(r.doc_status),
+          escapeCSV(r.notes),
+        ].join(','))
+      ];
+
+      const csvContent = '\uFEFF' + csvRows.join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `${module}_documents_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err: any) {
+      alert(err.message || 'Gagal mengekspor data');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="container animate-fade-in pb-12">
 
@@ -282,6 +400,15 @@ export default function LegalDocPage({ config }: { config: LegalModuleConfig }) 
             <span className={importing ? 'text-blue' : ''}>{importing ? 'Memproses...' : 'Import CSV'}</span>
             <input type="file" accept=".csv" onChange={handleImport} className="hidden" disabled={importing} />
           </label>
+          <button 
+            className="btn" 
+            onClick={handleExportCSV} 
+            disabled={exporting} 
+            title="Ekspor ke CSV"
+          >
+            {exporting ? <Loader2 size={16} className="animate-spin text-text-3" /> : <Download size={16} className="text-text-3" />}
+            Ekspor CSV
+          </button>
           <button className="btn btn-primary" onClick={openAdd} title="Tambah Dokumen Baru">
             <Plus size={16}/> Tambah Dokumen
           </button>
@@ -375,73 +502,97 @@ export default function LegalDocPage({ config }: { config: LegalModuleConfig }) 
       ) : (
         <>
           <TableShell
-            loading={loading}
-            colSpan={10}
+            loading={false}
+            colSpan={11}
             headers={[
-          { label: 'NO. REF',                    width: 100 },
-          { label: 'NAMA DOKUMEN',                width: 210 },
-          { label: 'KATEGORI',                    width: 100 },
-          { label: 'PERUSAHAAN',                  width: 140 },
-          { label: 'PIC',                         width: 100 },
-          { label: 'TGL TERBIT',                  width: 88  },
-          { label: expiryLabel.toUpperCase(),      width: 110 },
-          { label: 'KLASIFIKASI',                 width: 100 },
-          { label: 'STATUS',                      width: 96  },
-          { label: 'AKSI', right: true, width: 96 },
-        ]}
-      >
-        {rows.length === 0 ? (
-          <tr><td colSpan={10} className="py-20 text-center text-sm-muted">Tidak ada data ditemukan</td></tr>
-        ) : rows.map(r => {
-          // Abbreviate long confidentiality labels for table display
-          const confShort: Record<string, string> = {
-            'Public/Internal': 'Public',
-            'Restricted': 'Restricted',
-            'Confidential': 'Confidential',
-            'Strictly Confidential / Privileged': 'Strictly Conf.',
-          };
-          return (
-          <tr key={r.id} className="hover:bg-surface-2 transition-colors border-b border-border-subtle">
-            <td className="p-table font-mono text-[10px] font-700 text-blue whitespace-nowrap align-middle">{r.id_number || '—'}</td>
-            <td className="p-table align-middle td-doc-name">
-              <div className="font-600 text-[11px] text-text truncate" title={r.doc_name}>{r.doc_name}</div>
-              {r.notes && <div className="text-[9px] text-text-3 truncate mt-0.5">{r.notes}</div>}
-            </td>
-            <td className="p-table align-middle td-category">
-              <span className="inline-block truncate max-w-full text-[10px] font-600 text-text-2" title={r.category}>{r.category}</span>
-            </td>
-            <td className="p-table text-[11px] text-text-2 align-middle truncate td-company" title={r.company_name}>{r.company_name || '—'}</td>
-            <td className="p-table whitespace-nowrap text-[11px] font-600 align-middle">{r.pic}</td>
-            <td className="p-table whitespace-nowrap text-[10px] text-text-2 align-middle">{fmtDate(r.issue_date)}</td>
-            <td className="p-table whitespace-nowrap align-middle">
-              <div className={`text-[10px] font-700 ${EXPIRY_TEXT_CLS[r.status] || 'text-text'}`}>{fmtDate(r.expiry_date)}</div>
-              {r.status && <div className={`text-[9px] font-600 uppercase tracking-tight mt-0.5 ${EXPIRY_TEXT_CLS[r.status] || 'text-text-3'}`}>{r.status}{r.days_until_expiry ? ` · ${r.days_until_expiry}h` : ''}</div>}
-            </td>
-            <td className="p-table align-middle">
-              <Badge label={confShort[r.confidentiality] || r.confidentiality || 'Public'} colorClass={`${CONF_CLS[r.confidentiality] || 'badge-emerald'} !text-[9px]`}/>
-            </td>
-            <td className="p-table align-middle">
-              <Badge label={r.doc_status || 'Draft'} colorClass={`${DOC_STATUS_CLS[r.doc_status] || 'badge-slate'} !text-[9px]`}/>
-            </td>
-            <td className="p-table text-right whitespace-nowrap align-middle td-action-sticky">
-              <div className="flex justify-end gap-1.5 pr-3">
-                <button className="btn-icon hover:bg-blue-light hover:text-blue border-transparent"
-                  onClick={() => openDetail(r.id)} title="Detail Dokumen">
-                  <Eye size={13}/>
-                </button>
-                <button className="btn-icon hover:bg-blue-light hover:text-blue border-transparent"
-                  onClick={() => openEdit(r.id)} title="Ubah Data">
-                  <Edit2 size={13}/>
-                </button>
-                <button className="btn-icon hover:bg-rose-light hover:text-rose border-transparent"
-                  onClick={() => handleDelete(r.id, r.doc_name)} title="Hapus Dokumen">
-                  <Trash2 size={13}/>
-                </button>
-              </div>
-            </td>
-          </tr>
-          );
-        })}
+              {
+                label: (
+                  <input
+                    type="checkbox"
+                    className="checkbox-premium"
+                    checked={rows.length > 0 && rows.every(r => selectedIds.includes(r.id))}
+                    onChange={toggleSelectAll}
+                    title="Pilih semua baris"
+                  />
+                ),
+                width: 44,
+                isCheckbox: true
+              },
+              { label: 'NO. REF',                    width: 100 },
+              { label: 'NAMA DOKUMEN',                width: 210 },
+              { label: 'KATEGORI',                    width: 100 },
+              { label: 'PERUSAHAAN',                  width: 140 },
+              { label: 'PIC',                         width: 100 },
+              { label: 'TGL TERBIT',                  width: 88  },
+              { label: expiryLabel.toUpperCase(),      width: 110 },
+              { label: 'KLASIFIKASI',                 width: 100 },
+              { label: 'STATUS',                      width: 96  },
+              { label: 'AKSI', right: true, width: 96 },
+            ]}
+          >
+            {loading ? (
+              <SkeletonTable colSpan={11} rowCount={10} />
+            ) : rows.length === 0 ? (
+              <tr><td colSpan={11} className="py-20 text-center text-sm-muted">Tidak ada data ditemukan</td></tr>
+            ) : rows.map(r => {
+              // Abbreviate long confidentiality labels for table display
+              const confShort: Record<string, string> = {
+                'Public/Internal': 'Public',
+                'Restricted': 'Restricted',
+                'Confidential': 'Confidential',
+                'Strictly Confidential / Privileged': 'Strictly Conf.',
+              };
+              return (
+                <tr key={r.id} className={`hover:bg-surface-2 transition-colors border-b border-border-subtle ${selectedIds.includes(r.id) ? 'bg-blue-light/30' : ''}`}>
+                  <td className="td-checkbox">
+                    <input
+                      type="checkbox"
+                      className="checkbox-premium"
+                      checked={selectedIds.includes(r.id)}
+                      onChange={() => toggleSelect(r.id)}
+                      title={`Pilih ${r.doc_name}`}
+                    />
+                  </td>
+                  <td className="p-table font-mono text-[10px] font-700 text-blue whitespace-nowrap align-middle">{r.id_number || '—'}</td>
+                  <td className="p-table align-middle td-doc-name">
+                    <div className="font-600 text-[11px] text-text truncate" title={r.doc_name}>{r.doc_name}</div>
+                    {r.notes && <div className="text-[9px] text-text-3 truncate mt-0.5">{r.notes}</div>}
+                  </td>
+                  <td className="p-table align-middle td-category">
+                    <span className="inline-block truncate max-w-full text-[10px] font-600 text-text-2" title={r.category}>{r.category}</span>
+                  </td>
+                  <td className="p-table text-[11px] text-text-2 align-middle truncate td-company" title={r.company_name}>{r.company_name || '—'}</td>
+                  <td className="p-table whitespace-nowrap text-[11px] font-600 align-middle">{r.pic}</td>
+                  <td className="p-table whitespace-nowrap text-[10px] text-text-2 align-middle">{fmtDate(r.issue_date)}</td>
+                  <td className="p-table whitespace-nowrap align-middle">
+                    <div className={`text-[10px] font-700 ${EXPIRY_TEXT_CLS[r.status] || 'text-text'}`}>{fmtDate(r.expiry_date)}</div>
+                    {r.status && <div className={`text-[9px] font-600 uppercase tracking-tight mt-0.5 ${EXPIRY_TEXT_CLS[r.status] || 'text-text-3'}`}>{r.status}{r.days_until_expiry ? ` · ${r.days_until_expiry}h` : ''}</div>}
+                  </td>
+                  <td className="p-table align-middle">
+                    <Badge label={confShort[r.confidentiality] || r.confidentiality || 'Public'} colorClass={`${CONF_CLS[r.confidentiality] || 'badge-emerald'} !text-[9px]`}/>
+                  </td>
+                  <td className="p-table align-middle">
+                    <Badge label={r.doc_status || 'Draft'} colorClass={`${DOC_STATUS_CLS[r.doc_status] || 'badge-slate'} !text-[9px]`}/>
+                  </td>
+                  <td className="p-table text-right whitespace-nowrap align-middle td-action-sticky">
+                    <div className="flex justify-end gap-1.5 pr-3">
+                      <button className="btn-icon hover:bg-blue-light hover:text-blue border-transparent"
+                        onClick={() => openDetail(r.id)} title="Detail Dokumen">
+                        <Eye size={13}/>
+                      </button>
+                      <button className="btn-icon hover:bg-blue-light hover:text-blue border-transparent"
+                        onClick={() => openEdit(r.id)} title="Ubah Data">
+                        <Edit2 size={13}/>
+                      </button>
+                      <button className="btn-icon hover:bg-rose-light hover:text-rose border-transparent"
+                        onClick={() => handleDelete(r.id, r.doc_name)} title="Hapus Dokumen">
+                        <Trash2 size={13}/>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </TableShell>
           {!loading && rows.length > 0 && (
             <PaginationBar page={page} limit={LIMIT} total={total} totalPages={totalPages}
@@ -450,95 +601,123 @@ export default function LegalDocPage({ config }: { config: LegalModuleConfig }) 
         </>
       )}
 
-      {/* ── DETAIL MODAL ── */}
-      {(detail || dlLoading) && (
-        <ModalShell
-          title={detail ? `Detail — ${detail.doc_name}` : 'Memuat…'}
-          onClose={() => setDetail(null)}
-          size="md"
-        >
-          {dlLoading || !detail ? (
-            <div className="flex-center py-12"><Loader2 size={28} className="animate-spin text-blue"/></div>
-          ) : (
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-lg-black">{detail.doc_name}</h2>
-                  <p className="text-xs-muted mt-1">{detail.category}{detail.id_number ? ` · ${detail.id_number}` : ''}</p>
-                </div>
-                <div className="flex flex-col items-end gap-1.5">
-                  <Badge label={detail.doc_status || 'Draft'} colorClass={DOC_STATUS_CLS[detail.doc_status] || 'badge-slate'}/>
-                  {detail.status && <Badge label={detail.status} colorClass={EXPIRY_STATUS_CLS[detail.status] || 'badge-slate'}/>}
-                </div>
+      {/* FLOATING BULK ACTIONS BAR */}
+      {selectedIds.length > 0 && (
+        <div className="bulk-actions-bar">
+          <span className="bulk-actions-text">
+            {selectedIds.length} item terpilih
+          </span>
+          <div className="bulk-actions-divider" />
+          <div className="bulk-actions-buttons">
+            <button
+              type="button"
+              className="btn py-1 px-3 text-xs bg-rose text-white border-none hover:opacity-90 flex items-center gap-1"
+              onClick={handleBulkDelete}
+              disabled={deletingBulk}
+            >
+              <Trash2 size={13} />
+              {deletingBulk ? 'Menghapus...' : 'Hapus Terpilih'}
+            </button>
+            <button
+              type="button"
+              className="btn py-1 px-3 text-xs bg-slate-200 text-text border-none hover:bg-slate-300"
+              onClick={() => setSelectedIds([])}
+              disabled={deletingBulk}
+            >
+              Batal
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── DETAIL DRAWER (SlideOver) ── */}
+      <SlideOverShell
+        isOpen={!!detail || dlLoading}
+        onClose={() => setDetail(null)}
+        title={detail ? `Detail — ${detail.doc_name}` : 'Memuat…'}
+        size="md"
+      >
+        {dlLoading || !detail ? (
+          <div className="flex-center py-12"><Loader2 size={28} className="animate-spin text-blue"/></div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg-black">{detail.doc_name}</h2>
+                <p className="text-xs-muted mt-1">{detail.category}{detail.id_number ? ` · ${detail.id_number}` : ''}</p>
               </div>
-
-              <div className="detail-grid">
-                <SBox icon={<div className="text-blue">{icon}</div>} title="Informasi Dokumen">
-                  <InfoRow label="Kategori"    value={detail.category}/>
-                  {detail.id_number && <InfoRow label={idLabel} value={<span className="font-mono">{detail.id_number}</span>}/>}
-                  <InfoRow label="Perusahaan"  value={detail.company_name}/>
-                  <InfoRow label="PIC"         value={detail.pic}/>
-                  <InfoRow label="Status Dokumen" value={
-                    <Badge label={detail.doc_status || 'Draft'} colorClass={DOC_STATUS_CLS[detail.doc_status] || 'badge-slate'}/>
-                  }/>
-                  <InfoRow label="Klasifikasi Kerahasiaan" value={
-                    <Badge label={detail.confidentiality || 'Public/Internal'} colorClass={CONF_CLS[detail.confidentiality] || 'badge-emerald'}/>
-                  }/>
-                  <InfoRow label="Tgl Terbit" value={fmtDate(detail.issue_date)}/>
-                  {detail.expiry_date && (
-                    <InfoRow label={expiryLabel} value={
-                      <span className={EXPIRY_TEXT_CLS[detail.status] || 'text-text'}>
-                        {fmtDate(detail.expiry_date)}
-                        {detail.days_until_expiry !== null && (
-                          <span className="ml-1 text-xs-muted">({daysLabel(parseInt(detail.days_until_expiry))})</span>
-                        )}
-                      </span>
-                    }/>
-                  )}
-                </SBox>
-                <SBox icon={<FileCheck size={14}/>} title="Lampiran & Catatan">
-                  {detail.file_url ? (
-                    <a href={detail.file_url} target="_blank" rel="noopener noreferrer"
-                      className="flex-start gap-1.5 text-blue text-xs font-600 hover:underline mb-2">
-                      <ExternalLink size={12}/>
-                      {detail.file_name || 'Lihat Dokumen'}
-                    </a>
-                  ) : (
-                    <p className="text-xs-muted">Tidak ada file terlampir</p>
-                  )}
-                  {detail.notes && (
-                    <div className="mt-2">
-                      <p className="text-xs-bold mb-1">Catatan</p>
-                      <p className="text-sm-muted lh-1-6">{detail.notes}</p>
-                    </div>
-                  )}
-                </SBox>
-              </div>
-
-              {detail.audit_logs?.length > 0 && (
-                <div>
-                  <p className="text-xs-bold mb-2">Riwayat Aktivitas</p>
-                  <div className="flex flex-col max-h-36 overflow-y-auto border border-border rounded-xl">
-                    {detail.audit_logs.map((log: any, i: number) => (
-                      <div key={log.id} className={`flex-between text-xxs px-3 py-1.5 ${i < detail.audit_logs.length - 1 ? 'border-b border-border-subtle' : ''}`}>
-                        <span className="text-text font-700 uppercase">{ACTION_LABEL[log.action] || log.action}</span>
-                        <span className="text-text-3">{new Date(log.performed_at).toLocaleString('id-ID')}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="modal-footer-actions">
-                <button className="btn" onClick={() => { setDetail(null); openEdit(detail.id); }} title="Edit">
-                  <Edit2 size={14}/> Edit
-                </button>
-                <button className="btn btn-primary" onClick={() => setDetail(null)} title="Tutup">Tutup</button>
+              <div className="flex flex-col items-end gap-1.5">
+                <Badge label={detail.doc_status || 'Draft'} colorClass={DOC_STATUS_CLS[detail.doc_status] || 'badge-slate'}/>
+                {detail.status && <Badge label={detail.status} colorClass={EXPIRY_STATUS_CLS[detail.status] || 'badge-slate'}/>}
               </div>
             </div>
-          )}
-        </ModalShell>
-      )}
+
+            <div className="detail-grid">
+              <SBox icon={<div className="text-blue">{icon}</div>} title="Informasi Dokumen">
+                <InfoRow label="Kategori"    value={detail.category}/>
+                {detail.id_number && <InfoRow label={idLabel} value={<span className="font-mono">{detail.id_number}</span>}/>}
+                <InfoRow label="Perusahaan"  value={detail.company_name}/>
+                <InfoRow label="PIC"         value={detail.pic}/>
+                <InfoRow label="Status Dokumen" value={
+                  <Badge label={detail.doc_status || 'Draft'} colorClass={DOC_STATUS_CLS[detail.doc_status] || 'badge-slate'}/>
+                }/>
+                <InfoRow label="Klasifikasi Kerahasiaan" value={
+                  <Badge label={detail.confidentiality || 'Public/Internal'} colorClass={CONF_CLS[detail.confidentiality] || 'badge-emerald'}/>
+                }/>
+                <InfoRow label="Tgl Terbit" value={fmtDate(detail.issue_date)}/>
+                {detail.expiry_date && (
+                  <InfoRow label={expiryLabel} value={
+                    <span className={EXPIRY_TEXT_CLS[detail.status] || 'text-text'}>
+                      {fmtDate(detail.expiry_date)}
+                      {detail.days_until_expiry !== null && (
+                        <span className="ml-1 text-xs-muted">({daysLabel(parseInt(detail.days_until_expiry))})</span>
+                      )}
+                    </span>
+                  }/>
+                )}
+              </SBox>
+              <SBox icon={<FileCheck size={14}/>} title="Lampiran & Catatan">
+                {detail.file_url ? (
+                  <a href={detail.file_url} target="_blank" rel="noopener noreferrer"
+                    className="flex-start gap-1.5 text-blue text-xs font-600 hover:underline mb-2">
+                    <ExternalLink size={12}/>
+                    {detail.file_name || 'Lihat Dokumen'}
+                  </a>
+                ) : (
+                  <p className="text-xs-muted">Tidak ada file terlampir</p>
+                )}
+                {detail.notes && (
+                  <div className="mt-2">
+                    <p className="text-xs-bold mb-1">Catatan</p>
+                    <p className="text-sm-muted lh-1-6">{detail.notes}</p>
+                  </div>
+                )}
+              </SBox>
+            </div>
+
+            {detail.audit_logs?.length > 0 && (
+              <div>
+                <p className="text-xs-bold mb-2">Riwayat Aktivitas</p>
+                <div className="flex flex-col max-h-36 overflow-y-auto border border-border rounded-xl">
+                  {detail.audit_logs.map((log: any, i: number) => (
+                    <div key={log.id} className={`flex-between text-xxs px-3 py-1.5 ${i < detail.audit_logs.length - 1 ? 'border-b border-border-subtle' : ''}`}>
+                      <span className="text-text font-700 uppercase">{ACTION_LABEL[log.action] || log.action}</span>
+                      <span className="text-text-3">{new Date(log.performed_at).toLocaleString('id-ID')}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="modal-footer-actions">
+              <button className="btn" onClick={() => { setDetail(null); openEdit(detail.id); }} title="Edit">
+                <Edit2 size={14}/> Edit
+              </button>
+              <button className="btn btn-primary" onClick={() => setDetail(null)} title="Tutup">Tutup</button>
+            </div>
+          </div>
+        )}
+      </SlideOverShell>
 
       {/* ── ADD / EDIT MODAL ── */}
       {(showAdd || editRow) && (

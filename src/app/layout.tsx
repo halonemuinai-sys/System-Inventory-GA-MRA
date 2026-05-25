@@ -274,6 +274,8 @@ function Shell({ children }: { children: React.ReactNode }) {
       .catch(() => {});
   }, [pathname]);
 
+  let staggerIndex = 0;
+
   return (
     <div className="app-container">
       {/* OVERLAY FOR MOBILE */}
@@ -297,40 +299,49 @@ function Shell({ children }: { children: React.ReactNode }) {
           <img 
             src="/logo-mra.png" 
             alt="Logo" 
-            className={`${isCollapsed ? 'h-7 w-7' : 'h-8 w-auto'} object-contain transition-all`} 
+            className={`${isCollapsed ? 'h-7 w-7' : 'h-8 w-auto'} object-contain transition-all duration-300`} 
           />
-          {!isCollapsed && (
-            <div className="overflow-hidden whitespace-nowrap">
-              <p className="text-sm font-900 letter-tight text-text leading-tight">
-                MRA Inventory
-              </p>
-              <p className="text-xs-bold text-blue mt-0.5">
-                Corporate Support
-              </p>
-            </div>
-          )}
+          <div className="overflow-hidden whitespace-nowrap">
+            <p className="text-sm font-900 letter-tight text-text leading-tight">
+              MRA Inventory
+            </p>
+            <p className="text-xs-bold text-blue mt-0.5">
+              Corporate Support
+            </p>
+          </div>
         </div>
 
         <nav className="sidebar-menu">
           {visibleGroups.map((group) => (
             <div key={group.label} className="mb-1">
-              <p className="text-xxs-bold px-3.5 py-2.5 pb-1 text-text-3 uppercase letter-wide">
+              <p className="text-xxs-bold px-3.5 py-2.5 pb-1 text-text-3 uppercase letter-wide sidebar-menu-group-label">
                 {group.label}
               </p>
               {group.items.map((item) => {
                 const active = pathname === item.href;
+                const hasAlert = (item as any).module && alertByModule[(item as any).module] > 0;
+                const currentIndex = staggerIndex++;
                 return (
-                  <div key={item.href} className="sidebar-item-wrap">
+                  <div 
+                    key={item.href} 
+                    className="sidebar-item-wrap stagger-item"
+                    style={{ '--stagger-delay': currentIndex } as React.CSSProperties}
+                  >
                     <Link href={item.href} className="block no-underline">
                       <div className={`sidebar-item${active ? ' active' : ''}`}>
-                        <item.icon size={16} className={`shrink-0 ${active ? 'text-blue' : 'text-text-3'}`} />
-                        <span className="flex-1">{item.label}</span>
-                        {!isCollapsed && (item as any).module && alertByModule[(item as any).module] > 0 && (
-                          <span className="ml-1 bg-rose text-white text-xxxs font-800 min-w-4 h-4 flex items-center justify-center rounded-full px-1 shrink-0">
+                        <div className="relative flex items-center">
+                          <item.icon size={16} className={`shrink-0 ${active ? 'text-blue' : 'text-text-3'}`} />
+                          {isCollapsed && hasAlert && (
+                            <span className="absolute -top-1.5 -right-1.5 w-2.5 h-2.5 bg-rose rounded-full border border-white dark:border-slate-900 animate-pulse" />
+                          )}
+                        </div>
+                        <span className="sidebar-label flex-1">{item.label}</span>
+                        {hasAlert && (
+                          <span className="sidebar-badge ml-1 bg-rose text-white text-xxxs font-800 min-w-4 h-4 flex items-center justify-center rounded-full px-1 shrink-0 animate-pulse">
                             {alertByModule[(item as any).module] > 99 ? '99+' : alertByModule[(item as any).module]}
                           </span>
                         )}
-                        {active && !isCollapsed && <ChevronRight size={13} className="text-blue shrink-0 opacity-60" />}
+                        {active && <ChevronRight size={13} className="active-chevron text-blue shrink-0 opacity-60" />}
                       </div>
                     </Link>
                     {isCollapsed && <div className="flyout-label">{item.label}</div>}
@@ -344,27 +355,39 @@ function Shell({ children }: { children: React.ReactNode }) {
         <div className="sidebar-footer">
           <ThemeTogglePill />
           <div className="h-1.5" />
-          <div className="sidebar-item-wrap">
+          <div 
+            className="sidebar-item-wrap stagger-item" 
+            style={{ '--stagger-delay': staggerIndex++ } as React.CSSProperties}
+          >
             <Link href="/settings/password" className="block no-underline">
               <div className={`sidebar-item${pathname === '/settings/password' ? ' active' : ''}`}>
-                <Settings size={15} className={`shrink-0 ${pathname === '/settings/password' ? 'text-blue' : 'text-text-3'}`} />
-                <span>Settings</span>
+                <div className="relative flex items-center">
+                  <Settings size={15} className={`shrink-0 ${pathname === '/settings/password' ? 'text-blue' : 'text-text-3'}`} />
+                </div>
+                <span className="sidebar-label flex-1">Settings</span>
               </div>
             </Link>
             {isCollapsed && <div className="flyout-label">Settings</div>}
           </div>
-          <div className="sidebar-item-wrap">
-            <button type="button" className="sidebar-item text-rose w-full text-left bg-transparent border-none font-inherit outline-none" onClick={() => logout()}>
-              <LogOut size={15} className="shrink-0 text-rose" />
-              <span>Logout</span>
+          <div 
+            className="sidebar-item-wrap stagger-item"
+            style={{ '--stagger-delay': staggerIndex++ } as React.CSSProperties}
+          >
+            <button 
+              type="button" 
+              className="sidebar-item text-rose w-full text-left bg-transparent border-none font-inherit outline-none" 
+              onClick={() => logout()}
+            >
+              <div className="relative flex items-center">
+                <LogOut size={15} className="shrink-0 text-rose" />
+              </div>
+              <span className="sidebar-label flex-1">Logout</span>
             </button>
             {isCollapsed && <div className="flyout-label">Logout</div>}
           </div>
-          {!isCollapsed && (
-            <p className="text-xxxs text-text-3 text-center mt-2.5 leading-normal opacity-60">
-              © 2026 MRA Group
-            </p>
-          )}
+          <p className="sidebar-copyright text-xxxs text-text-3 text-center mt-2.5 leading-normal opacity-60">
+            © 2026 MRA Group
+          </p>
         </div>
       </aside>
 
