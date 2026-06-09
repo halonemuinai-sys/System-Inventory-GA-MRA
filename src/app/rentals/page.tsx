@@ -15,6 +15,9 @@ const EMPTY = { company_id:'', vendor_id:'', device_type:'', order_id:'', item_n
 
 const parseNum = (s: string) => parseFloat(s.replace(/\./g, '')) || 0;
 const fmtCurrency = (s: string) => {
+  if (typeof s === 'string' && s.includes('.')) {
+    s = s.split('.')[0];
+  }
   const num = String(s).replace(/\D/g, '');
   if (!num) return '';
   return new Intl.NumberFormat('id-ID').format(parseInt(num));
@@ -116,7 +119,20 @@ export default function RentalsPage() {
   const openEdit   = async (id:number) => {
     const r = await fetch(`/api/rentals/${id}`); const d = await r.json();
     setEditRow(d);
-    setForm({ company_id:String(d.company_id||''), vendor_id:String(d.vendor_id||''), device_type:d.device_type||'', order_id:d.order_id||'', item_name:d.item_name||'', price:String(d.price||''), unit_code:d.unit_code||'', duration_months:String(d.duration_months||''), start_rent:d.start_rent?d.start_rent.split('T')[0]:'', end_rent:d.end_rent?d.end_rent.split('T')[0]:'', department:d.department||'', status:d.status||'Active' });
+    setForm({ 
+      company_id:String(d.company_id||''), 
+      vendor_id:String(d.vendor_id||''), 
+      device_type:d.device_type||'', 
+      order_id:d.order_id||'', 
+      item_name:d.item_name||'', 
+      price:d.price ? String(Math.round(parseFloat(String(d.price)))) : '', 
+      unit_code:d.unit_code||'', 
+      duration_months:String(d.duration_months||''), 
+      start_rent:d.start_rent?d.start_rent.split('T')[0]:'', 
+      end_rent:d.end_rent?d.end_rent.split('T')[0]:'', 
+      department:d.department||'', 
+      status:d.status||'Active' 
+    });
     setFormErr('');
   };
   const openAdd   = () => { setEditRow(null); setForm(EMPTY); setFormErr(''); setShowAdd(true); };
