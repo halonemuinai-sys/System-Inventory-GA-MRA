@@ -317,6 +317,20 @@ export function SearchableSelect({
   const [search, setSearch] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Filter out duplicate names to prevent duplicate options in dropdown
+  const uniqueOptions = useMemo(() => {
+    const seen = new Set();
+    const result = [];
+    for (const opt of options) {
+      const normalized = String(opt.name || '').trim().toLowerCase();
+      if (!seen.has(normalized)) {
+        seen.add(normalized);
+        result.push(opt);
+      }
+    }
+    return result;
+  }, [options]);
+
   // Find the selected option to display its name when not active/editing search
   const selectedOption = useMemo(() => {
     return options.find(o => String(o.id) === String(value));
@@ -341,10 +355,10 @@ export function SearchableSelect({
   }, []);
 
   const filteredOptions = useMemo(() => {
-    if (!search.trim()) return options;
+    if (!search.trim()) return uniqueOptions;
     const s = search.toLowerCase();
-    return options.filter(o => o.name?.toLowerCase().includes(s));
-  }, [options, search]);
+    return uniqueOptions.filter(o => o.name?.toLowerCase().includes(s));
+  }, [uniqueOptions, search]);
 
   return (
     <div ref={containerRef} className={`relative w-full ${className}`} style={{ position: 'relative' }}>
