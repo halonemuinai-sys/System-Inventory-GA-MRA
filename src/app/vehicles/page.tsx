@@ -9,6 +9,15 @@ import {
 
 const fmt = (v: number) => new Intl.NumberFormat('id-ID').format(v || 0);
 const fmtDate = (d: string) => d ? new Date(d).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' }) : '—';
+const parseNum = (s: string) => parseFloat(String(s).replace(/\./g, '')) || 0;
+const fmtCurrency = (s: string) => {
+  if (typeof s === 'string' && s.includes('.')) {
+    s = s.split('.')[0];
+  }
+  const num = String(s).replace(/\D/g, '');
+  if (!num) return '';
+  return new Intl.NumberFormat('id-ID').format(parseInt(num));
+};
 const STAT_C: Record<string,string> = { Aktif:'badge-emerald', Active:'badge-emerald', 'Tidak Aktif':'badge-slate', default:'badge-amber' };
 const EMPTY = { 
   company_id:'', plate_number:'', chassis_number:'', vehicle_type:'', 
@@ -119,7 +128,7 @@ export default function VehiclesPage() {
           ...form, 
           company_id:parseInt(form.company_id)||null, 
           year:parseInt(form.year)||null, 
-          last_km:parseInt(form.last_km)||null 
+          last_km:Math.round(parseNum(form.last_km))||null 
         }) 
       });
       if (!res.ok) { const e=await res.json(); throw new Error(e.error||'Gagal menyimpan'); }
@@ -161,7 +170,7 @@ export default function VehiclesPage() {
         </div>
       ) : (
         <>
-          <TableShell headers={[{label:'Plat Nomor'},{label:'Brand/Model'},{label:'Tipe'},{label:'Driver & Dept'},{label:'Tahun/Warna'},{label:'Pajak',right:true},{label:'KM',right:true},{label:'Status',right:true},{label:'Aksi',right:true}]} loading={loading} colSpan={9}>
+          <TableShell headers={[{label:'Plat Nomor'},{label:'Brand/Model'},{label:'Tipe'},{label:'Driver & Dept'},{label:'Tahun/Warna'},{label:'Pajak',right:true},{label:'Amount',right:true},{label:'Status',right:true},{label:'Aksi',right:true}]} loading={loading} colSpan={9}>
             {rows.length===0 ? (
               <tr><td colSpan={9} className="py-14 text-center">
                 <Truck size={36} className="text-text-3 mx-auto mb-3 block" />
@@ -185,7 +194,7 @@ export default function VehiclesPage() {
                     <span className={`text-xs-bold ${taxExpired ? 'text-rose' : 'text-text-2'}`}>{fmtDate(v.tax_date)}</span>
                     {taxExpired&&<div className="text-xxs-bold text-rose">EXPIRED</div>}
                   </td>
-                  <td className="td-p text-sm-muted text-right">{v.last_km?`${fmt(v.last_km)} km`:'—'}</td>
+                  <td className="td-p text-sm-muted text-right">{v.last_km?`Rp ${fmt(v.last_km)}`:'—'}</td>
                   <td className="td-p text-right"><Badge label={v.status||'—'} colorClass={STAT_C[v.status]||STAT_C.default}/></td>
                   <td className="td-p text-right">
                     <div className="flex-end gap-2">
@@ -224,7 +233,7 @@ export default function VehiclesPage() {
                 <SBox icon={<Calendar size={14}/>} title="Operasional">
                   <InfoRow label="Driver"        value={detail.driver_name}/>
                   <InfoRow label="Departemen"    value={detail.department}/>
-                  <InfoRow label="Terakhir KM"   value={detail.last_km?`${fmt(detail.last_km)} km`:null}/>
+                  <InfoRow label="Amount"   value={detail.last_km?`Rp ${fmt(detail.last_km)}`:null}/>
                   <InfoRow label="Servis Terakhir" value={fmtDate(detail.last_service_date)}/>
                   <InfoRow label="Pajak s/d"     value={<span className={detail.tax_date && new Date(detail.tax_date) < new Date() ? 'text-rose font-700' : 'text-text'}>{fmtDate(detail.tax_date)}</span>}/>
                 </SBox>
@@ -256,7 +265,7 @@ export default function VehiclesPage() {
               <FF label="Driver" id="veh_driver"><input id="veh_driver" type="text" value={form.driver_name} onChange={e=>sf('driver_name',e.target.value)} placeholder="Nama Driver" className="input-premium" title="Driver"/></FF>
               <FF label="Departemen" id="veh_dept"><input id="veh_dept" type="text" value={form.department} onChange={e=>sf('department',e.target.value)} placeholder="Nama Departemen" className="input-premium" title="Departemen"/></FF>
               <FF label="Tanggal Pajak" id="veh_tax"><input id="veh_tax" type="date" value={form.tax_date} onChange={e=>sf('tax_date',e.target.value)} className="input-premium" title="Tanggal Pajak" /></FF>
-              <FF label="KM Terakhir" id="veh_km"><input id="veh_km" type="number" value={form.last_km} onChange={e=>sf('last_km',e.target.value)} min={0} placeholder="0" className="input-premium" title="KM Terakhir"/></FF>
+              <FF label="Amount" id="veh_km"><input id="veh_km" type="text" value={fmtCurrency(form.last_km)} onChange={e=>sf('last_km',e.target.value.replace(/\D/g,''))} placeholder="0" className="input-premium" title="Amount"/></FF>
               <FF label="Tgl Servis Terakhir" id="veh_service"><input id="veh_service" type="date" value={form.last_service_date} onChange={e=>sf('last_service_date',e.target.value)} className="input-premium" title="Tgl Servis Terakhir" /></FF>
               <FF label="Status" id="veh_status"><select id="veh_status" value={form.status} onChange={e=>sf('status',e.target.value)} className="input-premium" title="Status"><option value="Aktif">Aktif</option><option value="Tidak Aktif">Tidak Aktif</option><option value="Rusak">Rusak</option></select></FF>
             </div>
