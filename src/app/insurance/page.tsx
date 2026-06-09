@@ -12,6 +12,9 @@ const fmtDate = (d: string) => d ? new Date(d).toLocaleDateString('id-ID', { day
 
 const parseNum = (s: string) => parseFloat(String(s).replace(/\./g, '')) || 0;
 const fmtCurrency = (s: string) => {
+  if (typeof s === 'string' && s.includes('.')) {
+    s = s.split('.')[0];
+  }
   const num = String(s).replace(/\D/g, '');
   if (!num) return '';
   return new Intl.NumberFormat('id-ID').format(parseInt(num));
@@ -98,8 +101,8 @@ export default function InsurancePage() {
       end_date:d.end_date?d.end_date.split('T')[0]:'', 
       vehicle_id:String(d.vehicle_id||''), 
       vehicle_type:d.vehicle_type||'', 
-      premium_idr:String(d.premium_idr||''), 
-      coverage_idr:String(d.coverage_idr||''), 
+      premium_idr:d.premium_idr ? String(Math.round(parseFloat(String(d.premium_idr)))) : '', 
+      coverage_idr:d.coverage_idr ? String(Math.round(parseFloat(String(d.coverage_idr)))) : '', 
       broker:d.broker||'', 
       pic:d.pic||'', 
       contact_person:d.contact_person||'', 
