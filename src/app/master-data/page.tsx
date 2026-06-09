@@ -6,6 +6,7 @@ import { Badge, ModalShell, FF, FormError, TableShell } from '@/components/PageS
 
 const masterTables = [
   { id: 'm_company', label: 'Perusahaan (Company)' },
+  { id: 'm_vendor_category', label: 'Kategori Vendor (Vendor Master)' },
   { id: 'm_asset_category', label: 'Kategori Aset' },
   { id: 'm_asset_type', label: 'Tipe Aset' },
   { id: 'm_condition', label: 'Kondisi' },

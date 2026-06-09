@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
-const allowedTables = ['m_company', 'm_asset_category', 'm_asset_type', 'm_condition', 'm_status'];
+const allowedTables = ['m_company', 'm_asset_category', 'm_asset_type', 'm_condition', 'm_status', 'm_vendor_category'];
 
 export async function GET(request: Request) {
   try {
