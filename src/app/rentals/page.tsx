@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { Search, Plus, Eye, Edit2, Loader2, Save, HardDrive, AlertCircle, Trash2, Download } from 'lucide-react';
-import { Badge, ModalShell, FF, PaginationBar, TableShell, InfoRow, SBox, FormError } from '@/components/PageShared';
+import { Badge, ModalShell, FF, PaginationBar, TableShell, InfoRow, SBox, FormError, SearchableSelect } from '@/components/PageShared';
 
 const fmt = (v: number) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(v || 0);
 const fmtDate = (d: string) => d ? new Date(d).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' }) : '—';
@@ -52,7 +52,7 @@ export default function RentalsPage() {
   useEffect(() => {
     Promise.all([
       fetch('/api/assets/meta').then(r=>r.json()),
-      fetch('/api/vendors?limit=200').then(r=>r.json()),
+      fetch('/api/vendors?all=true').then(r=>r.json()),
     ]).then(([am, vm]) => setMeta({ companies: am.companies||[], vendors: vm.data||[] })).catch(()=>{});
   }, []);
 
@@ -370,10 +370,13 @@ export default function RentalsPage() {
                 </select>
               </FF>
               <FF label="Vendor" id="rnt_vnd">
-                <select id="rnt_vnd" value={form.vendor_id} onChange={e=>sf('vendor_id',e.target.value)} className="input-premium" title="Pilih Vendor">
-                  <option value="">— Pilih Vendor —</option>
-                  {meta.vendors.map((v:any)=><option key={v.id} value={v.id}>{v.vendor_name}</option>)}
-                </select>
+                <SearchableSelect
+                  id="rnt_vnd"
+                  value={form.vendor_id}
+                  onChange={v => sf('vendor_id', v)}
+                  options={meta.vendors.map((v: any) => ({ id: v.id, name: v.vendor_name }))}
+                  placeholder="— Pilih Vendor —"
+                />
               </FF>
               <FF label="Nama Item" id="rnt_name" required><input id="rnt_name" type="text" value={form.item_name} onChange={e=>sf('item_name',e.target.value)} placeholder="Laptop Dell XPS 15" className="input-premium" title="Nama Item" /></FF>
               <FF label="Tipe Perangkat" id="rnt_type"><input id="rnt_type" type="text" value={form.device_type} onChange={e=>sf('device_type',e.target.value)} placeholder="Laptop / Printer / Tab" className="input-premium" title="Tipe Perangkat" /></FF>

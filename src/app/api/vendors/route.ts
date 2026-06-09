@@ -4,12 +4,13 @@ import { query } from '@/lib/db';
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
+    const isAll    = searchParams.get('all') === 'true';
     const page     = Math.max(1, parseInt(searchParams.get('page')  || '1'));
-    const limit    = Math.min(100, Math.max(5, parseInt(searchParams.get('limit') || '20')));
+    const limit    = isAll ? 100000 : Math.min(100, Math.max(5, parseInt(searchParams.get('limit') || '20')));
     const search   = searchParams.get('search')   || '';
     const catId    = searchParams.get('category') || '';
     const statusQ  = searchParams.get('status')   || '';
-    const offset   = (page - 1) * limit;
+    const offset   = isAll ? 0 : (page - 1) * limit;
 
     const conditions: string[] = [];
     const params: (string | number)[] = [];

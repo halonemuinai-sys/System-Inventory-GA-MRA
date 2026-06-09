@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Search, Plus, Eye, Edit2, Loader2, Save, Wrench, AlertCircle, Trash2 } from 'lucide-react';
 import { 
   Badge, ModalShell, FF, SLabel, PaginationBar, 
-  TableShell, InfoRow, SBox, FormError, iStyle 
+  TableShell, InfoRow, SBox, FormError, iStyle, SearchableSelect
 } from '@/components/PageShared';
 
 const fmt = (v: number) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(v || 0);
@@ -57,8 +57,8 @@ export default function MaintenancePage() {
   useEffect(() => {
     Promise.all([
       fetch('/api/assets/meta').then(r=>r.json()),
-      fetch('/api/vendors/meta').then(r=>r.json()),
-    ]).then(([am, vm]) => setMeta({ companies: am.companies||[], vendors: vm.vendors||vm.data||[] })).catch(()=>{});
+      fetch('/api/vendors?all=true').then(r=>r.json()),
+    ]).then(([am, vm]) => setMeta({ companies: am.companies||[], vendors: vm.data||[] })).catch(()=>{});
   }, []);
 
   const load = useCallback(async (p: number) => {
@@ -270,7 +270,15 @@ export default function MaintenancePage() {
               <FF label="Area / Ruangan" id="mtn_area"><input id="mtn_area" type="text" value={form.room_area} onChange={e=>sf('room_area',e.target.value)} placeholder="Lantai 3, Ruang Rapat" className="input-premium" title="Area / Ruangan"/></FF>
               <FF label="Tipe Servis" id="mtn_type"><input id="mtn_type" type="text" value={form.service_type} onChange={e=>sf('service_type',e.target.value)} placeholder="Routine / Repair / Cleaning" className="input-premium" title="Tipe Servis"/></FF>
               <FF label="PIC Pelaksana" id="mtn_pic"><input id="mtn_pic" type="text" value={form.pic} onChange={e=>sf('pic',e.target.value)} placeholder="Nama PIC" className="input-premium" title="PIC Pelaksana"/></FF>
-              <FF label="Vendor / Bengkel" id="mtn_vendor"><select id="mtn_vendor" value={form.vendor_id} onChange={e=>sf('vendor_id',e.target.value)} className="input-premium" title="Pilih Vendor"><option value="">— Pilih Vendor —</option>{meta.vendors.map((v:any)=><option key={v.id} value={v.id}>{v.name}</option>)}</select></FF>
+              <FF label="Vendor / Bengkel" id="mtn_vendor">
+                <SearchableSelect
+                  id="mtn_vendor"
+                  value={form.vendor_id}
+                  onChange={v => sf('vendor_id', v)}
+                  options={meta.vendors.map((v: any) => ({ id: v.id, name: v.vendor_name || v.name }))}
+                  placeholder="— Pilih Vendor —"
+                />
+              </FF>
               <FF label="Kuantitas Unit" id="mtn_qty"><input id="mtn_qty" type="number" value={form.qty} onChange={e=>sf('qty',e.target.value)} min={1} className="input-premium" title="Kuantitas Unit"/></FF>
               <FF label="Jatuh Tempo / Expiry" id="mtn_expiry"><input id="mtn_expiry" type="date" value={form.expiry_date} onChange={e=>sf('expiry_date',e.target.value)} className="input-premium" title="Tanggal Jatuh Tempo" /></FF>
               <FF label="Estimasi Biaya (Rp)" id="mtn_est"><input id="mtn_est" type="text" value={fmtCurrency(form.est_cost)} onChange={e=>sf('est_cost',e.target.value.replace(/\D/g,''))} placeholder="0" className="input-premium" title="Estimasi Biaya"/></FF>

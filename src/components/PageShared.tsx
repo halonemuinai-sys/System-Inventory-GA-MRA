@@ -1,6 +1,7 @@
 'use client';
 
-import { ChevronLeft, ChevronRight, X, AlertCircle } from 'lucide-react';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { ChevronLeft, ChevronRight, X, AlertCircle, ChevronDown, Search } from 'lucide-react';
 
 /**
  * PAGE SHARED COMPONENTS
@@ -292,6 +293,178 @@ export function SkeletonTable({ colSpan, rowCount = 5 }: { colSpan: number; rowC
         </tr>
       ))}
     </>
+  );
+}
+
+export function SearchableSelect({
+  value,
+  onChange,
+  options,
+  placeholder = 'Pilih...',
+  id,
+  disabled = false,
+  className = '',
+}: {
+  value: string | number;
+  onChange: (val: string) => void;
+  options: { id: string | number; name: string }[];
+  placeholder?: string;
+  id?: string;
+  disabled?: boolean;
+  className?: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Find the selected option to display its name when not active/editing search
+  const selectedOption = useMemo(() => {
+    return options.find(o => String(o.id) === String(value));
+  }, [options, value]);
+
+  // When dropdown opens or value changes, reset search
+  useEffect(() => {
+    if (!isOpen) {
+      setSearch('');
+    }
+  }, [isOpen]);
+
+  // Click outside detection to close the dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredOptions = useMemo(() => {
+    if (!search.trim()) return options;
+    const s = search.toLowerCase();
+    return options.filter(o => o.name?.toLowerCase().includes(s));
+  }, [options, search]);
+
+  return (
+    <div ref={containerRef} className={`relative w-full ${className}`} style={{ position: 'relative' }}>
+      <div className="relative flex items-center">
+        <input
+          id={id}
+          type="text"
+          disabled={disabled}
+          className="input-premium pr-8 w-full cursor-pointer text-left"
+          style={{ paddingRight: '2rem' }}
+          placeholder={selectedOption ? selectedOption.name : placeholder}
+          value={isOpen ? search : (selectedOption ? selectedOption.name : '')}
+          onChange={e => {
+            if (!isOpen) setIsOpen(true);
+            setSearch(e.target.value);
+          }}
+          onFocus={() => setIsOpen(true)}
+          autoComplete="off"
+        />
+        <div 
+          className="absolute right-2.5 flex items-center gap-1 pointer-events-none text-text-3"
+          style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}
+        >
+          {isOpen && search && (
+            <button
+              type="button"
+              className="p-0.5 hover:text-text cursor-pointer pointer-events-auto"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSearch('');
+              }}
+              title="Clear search"
+            >
+              <X size={14} />
+            </button>
+          )}
+          <ChevronDown size={16} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        </div>
+      </div>
+
+      {isOpen && (
+        <div 
+          className="absolute z-50 w-full mt-1 bg-surface border border-border rounded-lg shadow-xl overflow-hidden"
+          style={{ 
+            position: 'absolute', 
+            zIndex: 50, 
+            width: '100%', 
+            marginTop: '0.25rem', 
+            backgroundColor: 'var(--surface)', 
+            border: '1px solid var(--border)', 
+            borderRadius: '0.5rem', 
+            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2)',
+            maxHeight: '220px', 
+            overflowY: 'auto'
+          }}
+        >
+          <div className="py-1">
+            {filteredOptions.length === 0 ? (
+              <div className="px-3 py-2 text-sm text-text-3 text-center">Tidak ada hasil</div>
+            ) : (
+              <>
+                <div
+                  className={`px-3 py-2 text-sm text-text-3 hover:bg-surface-2 cursor-pointer ${!value ? 'bg-surface-2 font-semibold text-blue' : ''}`}
+                  style={{ cursor: 'pointer', padding: '0.5rem 0.75rem' }}
+                  onClick={() => {
+                    onChange('');
+                    setIsOpen(false);
+                  }}
+                  onMouseEnter={(e) => {
+                    if (value) {
+                      e.currentTarget.style.backgroundColor = 'var(--surface-2)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (value) {
+                      e.currentTarget.style.backgroundColor = '';
+                    }
+                  }}
+                >
+                  — Pilih Vendor —
+                </div>
+                {filteredOptions.map(opt => {
+                  const isSelected = String(opt.id) === String(value);
+                  return (
+                    <div
+                      key={opt.id}
+                      className={`px-3 py-1.5 text-sm cursor-pointer ${
+                        isSelected ? 'font-semibold text-blue' : 'text-text'
+                      }`}
+                      style={{ 
+                        cursor: 'pointer', 
+                        padding: '0.375rem 0.75rem',
+                        backgroundColor: isSelected ? 'var(--blue-light)' : undefined,
+                        color: isSelected ? 'var(--blue)' : 'var(--text)'
+                      }}
+                      onClick={() => {
+                        onChange(String(opt.id));
+                        setIsOpen(false);
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isSelected) {
+                          e.currentTarget.style.backgroundColor = 'var(--surface-2)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isSelected) {
+                          e.currentTarget.style.backgroundColor = '';
+                        }
+                      }}
+                    >
+                      {opt.name}
+                    </div>
+                  );
+                })}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

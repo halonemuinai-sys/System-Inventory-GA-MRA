@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Search, Plus, Eye, Edit2, Loader2, Save, FileText, AlertCircle, Trash2 } from 'lucide-react';
 import { 
   Badge, ModalShell, FF, SLabel, PaginationBar, 
-  TableShell, InfoRow, SBox, FormError, iStyle 
+  TableShell, InfoRow, SBox, FormError, iStyle, SearchableSelect
 } from '@/components/PageShared';
 
 const fmt = (v: number) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(v || 0);
@@ -56,15 +56,17 @@ export default function DocumentsPage() {
     Promise.all([
       fetch('/api/assets/meta').then(r=>r.json()),
       fetch('/api/vendors/meta').then(r=>r.json()),
-    ]).then(([am, vm]) => setMeta(prev => ({
+      fetch('/api/vendors?all=true').then(r=>r.json()),
+    ]).then(([am, vm, av]) => setMeta(prev => ({
       ...prev,
       companies: am.companies||[],
       divisions: vm.divisions||[],
+      vendors: av.data||[],
     }))).catch(()=>{});
     
     fetch('/api/documents/meta')
       .then(r=>r.json())
-      .then(d => setMeta(m=>({...m, docTypes:d.docTypes||[], vendors:d.vendors||[]})))
+      .then(d => setMeta(m=>({...m, docTypes:d.docTypes||[]})))
       .catch(()=>{});
   }, []);
 
@@ -281,7 +283,15 @@ export default function DocumentsPage() {
               <FF label="Pihak MRA" id="mra_party"><select id="mra_party" value={form.mra_party_id} onChange={e=>sf('mra_party_id',e.target.value)} className="input-premium" title="Pilih Perusahaan"><option value="">— Pilih —</option>{meta.companies.map((c:any)=><option key={c.id} value={c.id}>{c.name}</option>)}</select></FF>
               <FF label="Divisi" id="division"><select id="division" value={form.division_id} onChange={e=>sf('division_id',e.target.value)} className="input-premium" title="Pilih Divisi"><option value="">— Pilih —</option>{meta.divisions.map((d:any)=><option key={d.id} value={d.id}>{d.name}</option>)}</select></FF>
               <FF label="Counter Party / Pihak Lawan" id="counter_party"><input id="counter_party" type="text" value={form.counter_party} onChange={e=>sf('counter_party',e.target.value)} placeholder="Nama Pihak Lawan" className="input-premium" title="Pihak Lawan"/></FF>
-              <FF label="Vendor Terkait" id="vendor"><select id="vendor" value={form.vendor_id} onChange={e=>sf('vendor_id',e.target.value)} className="input-premium" title="Pilih Vendor"><option value="">— Tidak ada —</option>{meta.vendors.map((v:any)=><option key={v.id} value={v.id}>{v.name}</option>)}</select></FF>
+              <FF label="Vendor Terkait" id="vendor">
+                <SearchableSelect
+                  id="vendor"
+                  value={form.vendor_id}
+                  onChange={v => sf('vendor_id', v)}
+                  options={meta.vendors.map((v: any) => ({ id: v.id, name: v.vendor_name || v.name }))}
+                  placeholder="— Tidak ada —"
+                />
+              </FF>
               <FF label="PIC Internal" id="pic_internal"><input id="pic_internal" type="text" value={form.pic_internal} onChange={e=>sf('pic_internal',e.target.value)} placeholder="Nama PIC" className="input-premium" title="PIC Internal"/></FF>
               <FF label="Lokasi Fisik Arsip" id="phys_loc"><input id="phys_loc" type="text" value={form.physical_location} onChange={e=>sf('physical_location',e.target.value)} placeholder="Gedung / Lantai / Box" className="input-premium" title="Lokasi Fisik"/></FF>
               <FF label="Berlaku Mulai" id="v_from"><input id="v_from" type="date" value={form.valid_from} onChange={e=>sf('valid_from',e.target.value)} className="input-premium" title="Mulai Berlaku" /></FF>
