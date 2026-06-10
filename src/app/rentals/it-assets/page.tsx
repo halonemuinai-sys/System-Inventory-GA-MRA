@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Search, Plus, Eye, Edit2, Loader2, Save, HardDrive, AlertCircle, Trash2, Download } from 'lucide-react';
+import { Search, Plus, Eye, Edit2, Loader2, Save, HardDrive, AlertCircle, Trash2, Download, RefreshCw } from 'lucide-react';
 import { Badge, ModalShell, FF, PaginationBar, TableShell, InfoRow, SBox, FormError, SearchableSelect } from '@/components/PageShared';
 
 const fmt = (v: number) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(v || 0);
@@ -45,11 +45,11 @@ const fmtCurrency = (s: string) => {
 // Merger function to combine IT specs into a single string
 const mergeSpecs = (brand: string, model: string, processor: string, os: string, ram: string, storage: string) => {
   const specs = [];
-  if (processor.trim()) specs.push(processor.trim());
-  specs.push(`RAM ${ram.trim() || '—'}`);
-  specs.push(`Storage ${storage.trim() || '—'}`);
-  if (os.trim()) specs.push(`OS ${os.trim()}`);
-  return `${brand.trim()} ${model.trim()} (${specs.join(', ')})`;
+  if (processor && processor.trim()) specs.push(processor.trim());
+  specs.push(`RAM ${ram && ram.trim() ? ram.trim() : '—'}`);
+  specs.push(`Storage ${storage && storage.trim() ? storage.trim() : '—'}`);
+  if (os && os.trim()) specs.push(`OS ${os.trim()}`);
+  return `${brand ? brand.trim() : ''} ${model ? model.trim() : ''} (${specs.join(', ')})`.trim();
 };
 
 // Parser function to split combined item_name back into separate fields for editing
@@ -57,7 +57,6 @@ const parseSpecs = (fullName: string) => {
   const defaultResult = { brand: fullName || '', model: '', processor: '', os: '', ram: '', storage: '' };
   if (!fullName) return defaultResult;
   
-  // Match brand, model, and anything inside the final parentheses
   const match = fullName.match(/^(.*?)\s+([^\(]+?)\s*\((.*?)\)$/);
   if (!match) return defaultResult;
   
@@ -92,6 +91,8 @@ export default function ITRentalsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [page, setPage]             = useState(1);
   const [loading, setLoading]       = useState(false);
+  const [syncing, setSyncing]       = useState(false);
+  const [syncMessage, setSyncMsg]   = useState<string|null>(null);
   const [error, setError]           = useState<string|null>(null);
   const [search, setSearch]         = useState('');
   const [compFilter, setComp]       = useState('');
@@ -130,9 +131,16 @@ export default function ITRentalsPage() {
       });
       const res = await fetch(`/api/rentals?${qs}`);
       const j = await res.json();
-      setRows(j.data); setTotal(j.total); setTotalPages(j.totalPages); setPage(j.page);
+      if (!res.ok) throw new Error(j.error || 'Gagal memuat data');
+      setRows(j.data || []); 
+      setTotal(j.total || 0); 
+      setTotalPages(j.totalPages || 1); 
+      setPage(j.page || 1);
       setHasSearched(true);
-    } catch(e:any) { setError(e.message); } finally { setLoading(false); }
+    } catch(e:any) { 
+      setError(e.message); 
+      setRows([]);
+    } finally { setLoading(false); }
   }, [appliedFilters]);
 
   const fetchKpi = useCallback(async (filters = appliedFilters) => {
@@ -156,9 +164,26 @@ export default function ITRentalsPage() {
     fetchKpi(filters);
   };
 
+  const handleSync = async () => {
+    setSyncing(true);
+    setSyncMsg(null);
+    try {
+      const res = await fetch('/api/rentals/sync', { method: 'POST' });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || 'Gagal menjalankan sinkronisasi');
+      setSyncMsg(`Sinkronisasi sukses! Berhasil memproses ${j.rentalCount} data rental IT.`);
+      load(1);
+      fetchKpi();
+    } catch (e: any) {
+      alert('Error sinkronisasi: ' + e.message);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   useEffect(() => {
     fetchKpi({ search: '', comp: '' });
-    load(1, { search: '', comp: '' }); // Load initially as well
+    load(1, { search: '', comp: '' });
   }, []);
 
   useEffect(() => {
@@ -188,7 +213,6 @@ export default function ITRentalsPage() {
     const r = await fetch(`/api/rentals/${id}`); const d = await r.json();
     setEditRow(d);
     
-    // Parse combined item_name back into separate form specs
     const parsed = parseSpecs(d.item_name);
     
     setForm({ 
@@ -222,7 +246,6 @@ export default function ITRentalsPage() {
     if (!form.company_id)       { setFormErr('Perusahaan wajib dipilih'); return; }
     setSaving(true);
     try {
-      // Merge specs into item_name before posting/putting
       const item_name = mergeSpecs(form.brand, form.model, form.processor, form.os, form.ram, form.storage);
       
       const url = editRow ? `/api/rentals/${editRow.id}` : '/api/rentals';
@@ -298,6 +321,12 @@ export default function ITRentalsPage() {
       <div className="page-header">
         <div><h1 className="header-title">IT Asset Rentals</h1><p className="header-subtitle">Kelola perangkat IT sewa, masa kontrak, dan vendor billing reference.</p></div>
         <div className="flex gap-2">
+          {/* SYNC DATA BUTTON */}
+          <button type="button" className="btn btn-outline" onClick={handleSync} disabled={syncing} title="Tarik data terbaru dari IT Helpdesk">
+            {syncing ? <Loader2 size={15} className="animate-spin"/> : <RefreshCw size={15}/>}
+            {syncing ? 'Mensinkronkan...' : 'Sinkronkan IT Helpdesk'}
+          </button>
+          
           <button type="button" className="btn" onClick={downloadCSV} disabled={exporting} title="Download semua data sebagai CSV">
             {exporting ? <Loader2 size={15} className="animate-spin"/> : <Download size={15}/>}
             {exporting ? 'Mengekspor...' : 'Download Excel'}
@@ -305,6 +334,17 @@ export default function ITRentalsPage() {
           <button type="button" className="btn btn-primary" onClick={openAdd} title="Tambah IT Rental Baru"><Plus size={16}/> Tambah Rental IT</button>
         </div>
       </div>
+
+      {/* Sync Success Message */}
+      {syncMessage && (
+        <div className="card border-l-4 border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20 py-3 px-4 mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Badge label="Sukses" colorClass="badge-emerald" />
+            <p className="text-sm font-600 text-emerald-800 dark:text-emerald-300">{syncMessage}</p>
+          </div>
+          <button type="button" className="text-xs font-700 text-emerald-600 hover:text-emerald-800 dark:text-emerald-400" onClick={() => setSyncMsg(null)}>Tutup</button>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 gap-4 mb-6">
@@ -363,7 +403,14 @@ export default function ITRentalsPage() {
         <div className="error-alert-container">
           <AlertCircle size={36} className="text-rose mb-3" />
           <p className="text-rose-bold">{error}</p>
-          <button className="btn btn-primary mt-4" onClick={()=>load(page)} title="Coba Memuat Ulang">Coba Lagi</button>
+          <p className="text-xs text-text-3 mt-1 mb-4">Pastikan server database terhubung dan server Next.js telah dimuat ulang.</p>
+          <div className="flex gap-2">
+            <button className="btn" onClick={()=>load(page)} title="Coba Memuat Ulang">Coba Lagi</button>
+            <button className="btn btn-primary" onClick={handleSync} disabled={syncing}>
+              {syncing ? <Loader2 size={14} className="animate-spin"/> : <RefreshCw size={14}/>}
+              Jalankan Sinkronisasi
+            </button>
+          </div>
         </div>
       ) : (
         <>
@@ -372,10 +419,14 @@ export default function ITRentalsPage() {
               <tr><td colSpan={8} className="py-14 text-center">
                 <HardDrive size={36} className="text-text-3 mx-auto mb-3 block" />
                 {hasSearched ? (
-                  <>
-                    <p className="text-sm-bold text-text-2">Tidak ada data rental IT ditemukan</p>
-                    <p className="text-xs-muted mt-1">Coba ubah filter dan klik Cari Data</p>
-                  </>
+                  <div className="flex flex-col items-center">
+                    <p className="text-sm-bold text-text-2">Belum ada data rental IT di sistem</p>
+                    <p className="text-xs-muted mt-1 mb-4">Silakan jalankan sinkronisasi data dari IT Helpdesk untuk memuat data.</p>
+                    <button type="button" className="btn btn-primary" onClick={handleSync} disabled={syncing}>
+                      {syncing ? <Loader2 size={15} className="animate-spin"/> : <RefreshCw size={15}/>}
+                      {syncing ? 'Mensinkronkan...' : 'Sinkronkan Sekarang'}
+                    </button>
+                  </div>
                 ) : (
                   <>
                     <p className="text-sm-bold text-text-2">Menunggu pencarian data</p>
