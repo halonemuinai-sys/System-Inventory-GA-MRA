@@ -99,7 +99,7 @@ export default function ITRentalsPage() {
   const [appliedFilters, setApplied] = useState({ search: '', comp: '' });
   const [hasSearched, setHasSearched] = useState(false);
   const [kpi, setKpi]               = useState({ total_items: 0, total_price: 0 });
-  const [meta, setMeta]             = useState<{companies:any[];vendors:any[]}>({companies:[],vendors:[]});
+  const [meta, setMeta]             = useState<{companies:any[];gaCompanies:any[];vendors:any[]}>({companies:[],gaCompanies:[],vendors:[]});
   const [detail, setDetail]         = useState<any>(null);
   const [dlLoading, setDlLoading]   = useState(false);
   const [showAdd, setShowAdd]       = useState(false);
@@ -116,8 +116,13 @@ export default function ITRentalsPage() {
   useEffect(() => {
     Promise.all([
       fetch('/api/assets/meta').then(r=>r.json()),
+      fetch('/api/rentals/companies').then(r=>r.json()),
       fetch('/api/vendors?all=true').then(r=>r.json()),
-    ]).then(([am, vm]) => setMeta({ companies: am.companies||[], vendors: vm.data||[] })).catch(()=>{});
+    ]).then(([am, hcos, vm]) => setMeta({ 
+      companies: hcos||[], 
+      gaCompanies: am.companies||[], 
+      vendors: vm.data||[] 
+    })).catch(()=>{});
   }, []);
 
   const load = useCallback(async (p: number, filters = appliedFilters) => {
@@ -509,7 +514,7 @@ export default function ITRentalsPage() {
               <FF label="Perusahaan" id="rnt_co" required>
                 <select id="rnt_co" value={form.company_id} onChange={e=>sf('company_id',e.target.value)} className="input-premium" title="Pilih Perusahaan">
                   <option value="">— Pilih —</option>
-                  {meta.companies.map((c:any)=><option key={c.id} value={c.id}>{c.name}</option>)}
+                  {(meta.gaCompanies || []).map((c:any)=><option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </FF>
               <FF label="Vendor" id="rnt_vnd">

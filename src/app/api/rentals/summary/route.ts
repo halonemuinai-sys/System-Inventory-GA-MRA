@@ -1,6 +1,16 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
+function normalizeCompany(name: string) {
+  if (!name) return '';
+  return name.toLowerCase()
+    .replace(/\bpt\b\.?/g, '')
+    .replace(/,\s*pt\.?/g, '')
+    .replace(/\bcv\b\.?/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -12,9 +22,26 @@ export async function GET(request: Request) {
     let idx = 1;
 
     if (compId) {
-      conds.push(`company_id = $${idx}`);
-      params.push(parseInt(compId));
-      idx++;
+      if (/^\d+$/.test(compId)) {
+        conds.push(`company_id = $${idx}`);
+        params.push(parseInt(compId));
+        idx++;
+      } else {
+        // It's a Helpdesk company name string! Match via normalized GA company name.
+        const normalizedInput = normalizeCompany(compId);
+        const gaCosRes = await query('SELECT id, name FROM m_company');
+        const matchedIds = gaCosRes.rows
+          .filter(c => normalizeCompany(c.name) === normalizedInput)
+          .map(c => c.id);
+
+        if (matchedIds.length > 0) {
+          conds.push(`company_id = ANY($${idx}::int[])`);
+          params.push(matchedIds);
+          idx++;
+        } else {
+          conds.push(`company_id = -1`); // force empty if no match
+        }
+      }
     }
     if (category === 'IT') {
       conds.push(`device_type IN ('Laptop', 'Smartphone', 'iMac', 'PC', 'IT Device', 'Printer')`);
