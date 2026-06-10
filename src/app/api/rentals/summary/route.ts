@@ -5,13 +5,22 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const compId = searchParams.get('company') || '';
+    const category = searchParams.get('category') || '';
     
-    let where = '';
+    const conds: string[] = [];
     const params: any[] = [];
+    let idx = 1;
+
     if (compId) {
-      where = 'WHERE company_id = $1';
+      conds.push(`company_id = $${idx}`);
       params.push(parseInt(compId));
+      idx++;
     }
+    if (category === 'IT') {
+      conds.push(`device_type IN ('Laptop', 'Smartphone', 'iMac', 'PC', 'IT Device', 'Printer')`);
+    }
+
+    const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
 
     const res = await query(`
       SELECT 

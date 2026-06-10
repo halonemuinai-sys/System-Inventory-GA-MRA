@@ -10,6 +10,7 @@ export async function GET(request: Request) {
     const compId = searchParams.get('company') || '';
     const offset = (page - 1) * limit;
 
+    const category = searchParams.get('category') || '';
     const conds: string[] = [];
     const params: (string | number)[] = [];
     let idx = 1;
@@ -21,6 +22,9 @@ export async function GET(request: Request) {
     if (compId) {
       conds.push(`r.company_id = $${idx}`);
       params.push(parseInt(compId)); idx++;
+    }
+    if (category === 'IT') {
+      conds.push(`r.device_type IN ('Laptop', 'Smartphone', 'iMac', 'PC', 'IT Device', 'Printer')`);
     }
 
     const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
