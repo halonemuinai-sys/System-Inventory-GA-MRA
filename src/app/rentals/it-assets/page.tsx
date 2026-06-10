@@ -182,8 +182,7 @@ export default function ITRentalsPage() {
   };
 
   useEffect(() => {
-    fetchKpi({ search: '', comp: '' });
-    load(1, { search: '', comp: '' });
+    // Do not load data automatically on mount, wait for filter and search submit
   }, []);
 
   useEffect(() => {
