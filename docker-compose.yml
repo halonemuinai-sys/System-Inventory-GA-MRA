@@ -1,0 +1,29 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ga-inventory-web
+    env_file:
+      - .env.local
+    ports:
+      - "3000:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: always
+
+  db-backup:
+    image: postgres:17-alpine
+    container_name: ga-inventory-backup
+    env_file:
+      - .env.local
+    environment:
+      - BACKUP_INTERVAL_SECONDS=86400
+      - BACKUP_KEEP_DAYS=7
+    volumes:
+      - ./backups:/backups
+      - ./docker/backup.sh:/usr/local/bin/backup.sh
+    entrypoint: ["sh", "/usr/local/bin/backup.sh"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: always
