@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Search, Plus, Eye, Edit2, Loader2, Save, ShieldCheck, AlertCircle, Trash2 } from 'lucide-react';
+import { Search, Plus, Eye, Edit2, Loader2, Save, ShieldCheck, AlertCircle, Trash2, Building2 } from 'lucide-react';
 import { 
   Badge, ModalShell, FF, SLabel, PaginationBar, 
   TableShell, InfoRow, SBox, FormError, iStyle 
@@ -66,8 +66,9 @@ export default function InsurancePage() {
     try {
       const qs = new URLSearchParams({ page:String(p), limit:String(LIMIT), ...(search&&{search}) });
       const res = await fetch(`/api/insurance?${qs}`);
+      if (!res.ok) throw new Error('Gagal memuat data polis');
       const j = await res.json();
-      setRows(j.data); setTotal(j.total); setTotalPages(j.totalPages); setPage(j.page);
+      setRows(j.data || []); setTotal(j.total || 0); setTotalPages(j.totalPages || 1); setPage(j.page || 1);
     } catch(e:any) { setError(e.message); } finally { setLoading(false); }
   }, [search]);
 
@@ -178,9 +179,9 @@ export default function InsurancePage() {
         </div>
       ) : (
         <>
-          <TableShell headers={[{label:'No. Polis'},{label:'Perusahaan Asuransi'},{label:'Tipe / Kategori'},{label:'Kendaraan'},{label:'Masa Berlaku'},{label:'Premi (Rp)',right:true},{label:'Status',right:true},{label:'Aksi',right:true}]} loading={loading} colSpan={8}>
+          <TableShell headers={[{label:'No. Polis'},{label:'Perusahaan Asuransi'},{label:'Perusahaan'},{label:'Tipe / Kategori'},{label:'Kendaraan'},{label:'Masa Berlaku'},{label:'Premi (Rp)',right:true},{label:'Status',right:true},{label:'Aksi',right:true}]} loading={loading} colSpan={9}>
             {rows.length===0 ? (
-              <tr><td colSpan={8} className="py-14 text-center">
+              <tr><td colSpan={9} className="py-14 text-center">
                 <ShieldCheck size={36} className="text-text-3 mx-auto mb-3 block" />
                 <p className="text-sm-bold text-text-2">Tidak ada polis ditemukan</p>
               </td></tr>
@@ -190,6 +191,12 @@ export default function InsurancePage() {
                 <tr key={ins.id} className="hover-row">
                   <td className="td-p font-mono text-blue text-xs font-700">{ins.policy_number||'—'}</td>
                   <td className="td-p font-600 text-text">{ins.insurance_company||'—'}</td>
+                  <td className="td-p">
+                    <div className="flex items-center gap-1 text-sm text-text-2">
+                      <Building2 size={12} className="shrink-0 text-text-3" />
+                      <span>{ins.company||'—'}</span>
+                    </div>
+                  </td>
                   <td className="td-p">
                     <div className="text-sm text-text">{ins.insurance_type||'—'}</div>
                     <div className="text-xs-muted">{ins.category||''}</div>
