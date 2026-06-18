@@ -63,8 +63,9 @@ export default function VehiclesPage() {
         ...(statusFilter && { status: statusFilter })
       });
       const res = await fetch(`/api/vehicles?${qs}`);
+      if (!res.ok) throw new Error('Gagal memuat data kendaraan');
       const j = await res.json();
-      setRows(j.data); setTotal(j.total); setTotalPages(j.totalPages); setPage(j.page);
+      setRows(j.data || []); setTotal(j.total || 0); setTotalPages(j.totalPages || 1); setPage(j.page || 1);
     } catch(e:any) { setError(e.message); } finally { setLoading(false); }
   }, [search, compFilter, statusFilter]);
 
