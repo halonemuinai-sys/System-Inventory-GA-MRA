@@ -8,6 +8,7 @@ export async function GET(request: Request) {
     const limit  = Math.min(100, Math.max(5, parseInt(searchParams.get('limit') || '20')));
     const search = searchParams.get('search')  || '';
     const compId = searchParams.get('company') || '';
+    const status = searchParams.get('status')  || '';
     const offset = (page - 1) * limit;
 
     const conds: string[] = [];
@@ -19,6 +20,7 @@ export async function GET(request: Request) {
       params.push(`%${search}%`); idx++;
     }
     if (compId) { conds.push(`v.company_id = $${idx}`); params.push(parseInt(compId)); idx++; }
+    if (status) { conds.push(`v.status = $${idx}`); params.push(status); idx++; }
 
     const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
 

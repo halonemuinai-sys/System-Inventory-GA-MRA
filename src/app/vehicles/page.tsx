@@ -33,6 +33,8 @@ export default function VehiclesPage() {
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState<string|null>(null);
   const [search, setSearch]         = useState('');
+  const [compFilter, setCompFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [companies, setCompanies]   = useState<any[]>([]);
   const [detail, setDetail]         = useState<any>(null);
   const [dlLoading, setDlLoading]   = useState(false);
@@ -53,12 +55,18 @@ export default function VehiclesPage() {
   const load = useCallback(async (p: number) => {
     setLoading(true); setError(null);
     try {
-      const qs = new URLSearchParams({ page:String(p), limit:String(LIMIT), ...(search&&{search}) });
+      const qs = new URLSearchParams({ 
+        page: String(p), 
+        limit: String(LIMIT), 
+        ...(search && { search }),
+        ...(compFilter && { company: compFilter }),
+        ...(statusFilter && { status: statusFilter })
+      });
       const res = await fetch(`/api/vehicles?${qs}`);
       const j = await res.json();
       setRows(j.data); setTotal(j.total); setTotalPages(j.totalPages); setPage(j.page);
     } catch(e:any) { setError(e.message); } finally { setLoading(false); }
-  }, [search]);
+  }, [search, compFilter, statusFilter]);
 
   useEffect(() => { load(1); }, [load]);
 
@@ -157,7 +165,32 @@ export default function VehiclesPage() {
             aria-label="Cari kendaraan operasional"
           />
         </div>
-        <div className="summary-item">
+
+        <select 
+          id="veh_comp_filter"
+          value={compFilter} 
+          onChange={e=>{setCompFilter(e.target.value); setPage(1);}}
+          className="input-premium w-auto max-w-[150px]" 
+          title="Filter Perusahaan"
+        >
+          <option value="">Semua Perusahaan</option>
+          {companies.map((c:any)=><option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+
+        <select 
+          id="veh_status_filter"
+          value={statusFilter} 
+          onChange={e=>{setStatusFilter(e.target.value); setPage(1);}}
+          className="input-premium w-auto max-w-[150px]" 
+          title="Filter Status"
+        >
+          <option value="">Semua Status</option>
+          <option value="Aktif">Aktif</option>
+          <option value="Tidak Aktif">Tidak Aktif</option>
+          <option value="Rusak">Rusak</option>
+        </select>
+
+        <div className="summary-item ml-auto">
           <span className="text-text-3">Total: </span><span className="font-800 text-text">{fmt(total)} kendaraan</span>
         </div>
       </div>
