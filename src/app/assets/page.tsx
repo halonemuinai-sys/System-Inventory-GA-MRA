@@ -396,7 +396,7 @@ export default function AssetsPage() {
 
   return (
     <div className="container animate-fade-in pb-12">
-      <div className="page-header">
+      <div className="page-header animate-slide-up" style={{ '--delay': '0ms' } as React.CSSProperties}>
         <div>
           <h1 className="header-title">Asset Inventory</h1>
           <p className="header-subtitle">Kelola dan pantau semua aset fisik MRA Group.</p>
@@ -408,17 +408,33 @@ export default function AssetsPage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="card">
-          <p className="text-xxs-bold text-text-3 uppercase letter-wide mb-1">Total Keseluruhan Aset</p>
-          <p className="text-2xl font-900 text-text">{fmt(kpi.total_assets)}</p>
+        <div 
+          className="card-metric animate-slide-up border-l-4 border-l-blue flex items-center justify-between glow-blue"
+          style={{ '--delay': '100ms' } as React.CSSProperties}
+        >
+          <div>
+            <p className="text-xxs-bold text-text-3 uppercase letter-wide mb-1">Total Keseluruhan Aset</p>
+            <p className="text-2xl font-900 text-text">{fmt(kpi.total_assets)}</p>
+          </div>
+          <div className="w-10 h-10 rounded-full bg-blue-light flex items-center justify-center text-blue shadow-sm">
+            <Package size={20} />
+          </div>
         </div>
-        <div className="card">
-          <p className="text-xxs-bold text-text-3 uppercase letter-wide mb-1">Total Nilai Perolehan</p>
-          <p className="text-2xl font-900 text-blue">Rp {fmt(kpi.total_value)}</p>
+        <div 
+          className="card-metric animate-slide-up border-l-4 border-l-indigo flex items-center justify-between glow-indigo"
+          style={{ '--delay': '200ms' } as React.CSSProperties}
+        >
+          <div>
+            <p className="text-xxs-bold text-text-3 uppercase letter-wide mb-1">Total Nilai Perolehan</p>
+            <p className="text-2xl font-900 text-indigo">Rp {fmt(kpi.total_value)}</p>
+          </div>
+          <div className="w-10 h-10 rounded-full bg-indigo-light flex items-center justify-center text-indigo shadow-sm">
+            <Tag size={20} />
+          </div>
         </div>
       </div>
 
-      <div className="filter-bar">
+      <div className="filter-bar animate-slide-up" style={{ '--delay': '300ms' } as React.CSSProperties}>
         <div className="search-box">
           <Search size={15} className="search-icon" />
           <input 
@@ -504,7 +520,7 @@ export default function AssetsPage() {
           </button>
         </div>
       ) : (
-        <>
+        <div className="animate-slide-up" style={{ '--delay': '400ms' } as React.CSSProperties}>
           <TableShell 
             headers={[
               {
@@ -548,7 +564,11 @@ export default function AssetsPage() {
                 </td>
               </tr>
             ) : assets.map((a, i) => (
-              <tr key={a.id} className={`hover-row ${selectedIds.includes(a.id) ? 'bg-blue-light/30' : ''}`}>
+              <tr 
+                key={a.id} 
+                className={`hover-row transition-all duration-200 animate-slide-up ${selectedIds.includes(a.id) ? 'bg-blue-light/30' : ''}`}
+                style={{ '--delay': `${Math.min(i * 35, 300)}ms` } as React.CSSProperties}
+              >
                 <td className="td-checkbox">
                   <input
                     type="checkbox"
@@ -599,7 +619,7 @@ export default function AssetsPage() {
           {!loading && assets.length > 0 && (
             <PaginationBar page={page} limit={LIMIT} total={total} totalPages={totalPages} onChange={setPage} />
           )}
-        </>
+        </div>
       )}
 
       {/* FLOATING BULK ACTIONS BAR */}
