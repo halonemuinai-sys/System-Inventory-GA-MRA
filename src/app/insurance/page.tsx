@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Search, Plus, Eye, Edit2, ShieldCheck, AlertCircle, Trash2, Building2 } from 'lucide-react';
+import { Search, Plus, Eye, Edit2, ShieldCheck, AlertCircle, Trash2, Building2, Coins } from 'lucide-react';
 import { Badge, PaginationBar, TableShell } from '@/components/PageShared';
 import { InsuranceDetailModal, InsuranceFormModal } from '@/components/InsuranceComponents';
 
@@ -140,12 +140,40 @@ export default function InsurancePage() {
 
   return (
     <div className="container animate-fade-in pb-12">
-      <div className="page-header">
+      <div className="page-header animate-slide-up" style={{ '--delay': '0ms' } as React.CSSProperties}>
         <div><h1 className="header-title">Insurance Policies</h1><p className="header-subtitle">Kelola polis asuransi, masa berlaku, dan premi tahunan.</p></div>
         <button className="btn btn-primary" onClick={openAdd} title="Tambah Polis Baru"><Plus size={16}/> Tambah Polis</button>
       </div>
 
-      <div className="filter-bar">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div 
+          className="card-metric animate-slide-up border-l-4 border-l-blue flex items-center justify-between glow-blue"
+          style={{ '--delay': '100ms' } as React.CSSProperties}
+        >
+          <div>
+            <p className="text-xxs-bold text-text-3 uppercase letter-wide mb-1">Total Polis</p>
+            <p className="text-2xl font-900 text-text">{fmt(total)}</p>
+          </div>
+          <div className="w-10 h-10 rounded-full bg-blue-light flex items-center justify-center text-blue shadow-sm">
+            <ShieldCheck size={20} />
+          </div>
+        </div>
+        <div 
+          className="card-metric animate-slide-up border-l-4 border-l-indigo flex items-center justify-between glow-indigo"
+          style={{ '--delay': '200ms' } as React.CSSProperties}
+        >
+          <div>
+            <p className="text-xxs-bold text-text-3 uppercase letter-wide mb-1">Total Premi (Halaman Ini)</p>
+            <p className="text-2xl font-900 text-indigo">Rp {fmt(totalPremium)}</p>
+          </div>
+          <div className="w-10 h-10 rounded-full bg-indigo-light flex items-center justify-center text-indigo shadow-sm">
+            <Coins size={20} />
+          </div>
+        </div>
+      </div>
+
+      <div className="filter-bar animate-slide-up" style={{ '--delay': '300ms' } as React.CSSProperties}>
         <div className="search-box">
           <Search size={15} className="search-icon"/>
           <input 
@@ -159,24 +187,16 @@ export default function InsurancePage() {
             aria-label="Cari data polis asuransi"
           />
         </div>
-        <div className="summary-box">
-          <div className="summary-item">
-            <span className="text-text-3">Total: </span><span className="font-800 text-text">{fmt(total)} polis</span>
-          </div>
-          <div className="summary-item-blue">
-            <span className="text-blue font-600">Premi: </span><span className="font-800 text-blue">Rp {fmt(totalPremium)}</span>
-          </div>
-        </div>
       </div>
 
       {error ? (
-        <div className="error-alert-container">
+        <div className="error-alert-container animate-slide-up" style={{ '--delay': '400ms' } as React.CSSProperties}>
           <AlertCircle size={36} className="text-rose mb-3" />
           <p className="text-rose-bold">{error}</p>
           <button className="btn btn-primary mt-4" onClick={()=>load(page)} title="Coba Memuat Ulang">Coba Lagi</button>
         </div>
       ) : (
-        <>
+        <div className="animate-slide-up" style={{ '--delay': '400ms' } as React.CSSProperties}>
           <TableShell headers={[{label:'No. Polis'},{label:'Perusahaan Asuransi'},{label:'Perusahaan'},{label:'Tipe / Kategori'},{label:'Kendaraan'},{label:'Masa Berlaku'},{label:'Premi (Rp)',right:true},{label:'Status',right:true},{label:'Aksi',right:true}]} loading={loading} colSpan={9}>
             {rows.length===0 ? (
               <tr><td colSpan={9} className="py-14 text-center">
@@ -186,7 +206,11 @@ export default function InsurancePage() {
             ) : rows.map((ins,i) => {
               const st = insStatus(ins.end_date);
               return (
-                <tr key={ins.id} className="hover-row">
+                <tr 
+                  key={ins.id} 
+                  className="hover-row transition-all duration-200 animate-slide-up"
+                  style={{ '--delay': `${Math.min(i * 35, 300)}ms` } as React.CSSProperties}
+                >
                   <td className="td-p font-mono text-blue text-xs font-700">{ins.policy_number||'—'}</td>
                   <td className="td-p font-600 text-text">{ins.insurance_company||'—'}</td>
                   <td className="td-p">
@@ -218,7 +242,7 @@ export default function InsurancePage() {
             })}
           </TableShell>
           {!loading&&rows.length>0&&<PaginationBar page={page} limit={LIMIT} total={total} totalPages={totalPages} onChange={p=>{setPage(p);load(p);}}/>}
-        </>
+        </div>
       )}
 
       {/* Detail Modal */}
