@@ -4,10 +4,12 @@ import { query } from '@/lib/db';
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const page   = Math.max(1, parseInt(searchParams.get('page')  || '1'));
-    const limit  = Math.min(100, Math.max(5, parseInt(searchParams.get('limit') || '20')));
-    const search = searchParams.get('search') || '';
-    const offset = (page - 1) * limit;
+    const page      = Math.max(1, parseInt(searchParams.get('page')  || '1'));
+    const limit     = Math.min(100, Math.max(5, parseInt(searchParams.get('limit') || '20')));
+    const search    = searchParams.get('search') || '';
+    const companyId = searchParams.get('company_id') || '';
+    const status    = searchParams.get('status') || '';
+    const offset    = (page - 1) * limit;
 
     const conds: string[] = [];
     const params: (string | number)[] = [];
@@ -16,6 +18,21 @@ export async function GET(request: Request) {
     if (search) {
       conds.push(`(i.policy_number ILIKE $${idx} OR i.insurance_company ILIKE $${idx} OR v.plate_number ILIKE $${idx})`);
       params.push(`%${search}%`); idx++;
+    }
+
+    if (companyId) {
+      conds.push(`i.company_id = $${idx}`);
+      params.push(parseInt(companyId)); idx++;
+    }
+
+    if (status) {
+      if (status === 'Expired') {
+        conds.push(`i.end_date < CURRENT_DATE`);
+      } else if (status === 'Renewal') {
+        conds.push(`i.end_date >= CURRENT_DATE AND i.end_date <= CURRENT_DATE + INTERVAL '30 days'`);
+      } else if (status === 'Active') {
+        conds.push(`(i.end_date > CURRENT_DATE + INTERVAL '30 days' OR i.end_date IS NULL)`);
+      }
     }
 
     const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
@@ -27,12 +44,12 @@ export async function GET(request: Request) {
                i.broker, i.pic, i.vehicle_type,
                c.name AS company, c.id AS company_id,
                v.plate_number, v.id AS vehicle_id
-        FROM insurances i
-        LEFT JOIN m_company c ON i.company_id = c.id
-        LEFT JOIN vehicles v ON i.vehicle_id = v.id
-        ${where}
-        ORDER BY i.end_date ASC NULLS LAST
-        LIMIT $${idx} OFFSET $${idx+1}
+         FROM insurances i
+         LEFT JOIN m_company c ON i.company_id = c.id
+         LEFT JOIN vehicles v ON i.vehicle_id = v.id
+         ${where}
+         ORDER BY i.end_date ASC NULLS LAST
+         LIMIT $${idx} OFFSET $${idx+1}
       `, [...params, limit, offset]),
       query(`SELECT COUNT(*) FROM insurances i LEFT JOIN vehicles v ON i.vehicle_id = v.id ${where}`, params),
     ]);

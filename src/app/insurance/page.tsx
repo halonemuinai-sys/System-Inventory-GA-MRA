@@ -42,6 +42,8 @@ export default function InsurancePage() {
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState<string|null>(null);
   const [search, setSearch]         = useState('');
+  const [companyId, setCompanyId]   = useState('');
+  const [status, setStatus]         = useState('');
   const [meta, setMeta]             = useState<{companies:any[];vehicles:any[]}>({companies:[],vehicles:[]});
   const [detail, setDetail]         = useState<any>(null);
   const [dlLoading, setDlLoading]   = useState(false);
@@ -62,13 +64,19 @@ export default function InsurancePage() {
   const load = useCallback(async (p: number) => {
     setLoading(true); setError(null);
     try {
-      const qs = new URLSearchParams({ page:String(p), limit:String(LIMIT), ...(search&&{search}) });
+      const qs = new URLSearchParams({ 
+        page:String(p), 
+        limit:String(LIMIT), 
+        ...(search&&{search}),
+        ...(companyId&&{company_id:companyId}),
+        ...(status&&{status})
+      });
       const res = await fetch(`/api/insurance?${qs}`);
       if (!res.ok) throw new Error('Gagal memuat data polis');
       const j = await res.json();
       setRows(j.data || []); setTotal(j.total || 0); setTotalPages(j.totalPages || 1); setPage(j.page || 1);
     } catch(e:any) { setError(e.message); } finally { setLoading(false); }
-  }, [search]);
+  }, [search, companyId, status]);
 
   useEffect(() => { load(1); }, [load]);
 
@@ -187,6 +195,34 @@ export default function InsurancePage() {
             aria-label="Cari data polis asuransi"
           />
         </div>
+
+        {/* Company Filter */}
+        <select
+          id="ins_filter_company"
+          value={companyId}
+          onChange={(e) => { setCompanyId(e.target.value); setPage(1); }}
+          className="input-premium max-w-[200px]"
+          title="Filter Perusahaan"
+        >
+          <option value="">Semua Perusahaan</option>
+          {meta.companies.map((c: any) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+
+        {/* Status Filter */}
+        <select
+          id="ins_filter_status"
+          value={status}
+          onChange={(e) => { setStatus(e.target.value); setPage(1); }}
+          className="input-premium max-w-[150px]"
+          title="Filter Status"
+        >
+          <option value="">Semua Status</option>
+          <option value="Active">Aktif</option>
+          <option value="Renewal">Renewal ({"<= 30 Hari"})</option>
+          <option value="Expired">Expired</option>
+        </select>
       </div>
 
       {error ? (
