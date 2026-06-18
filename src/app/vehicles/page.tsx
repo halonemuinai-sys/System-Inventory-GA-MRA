@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Search, Plus, Eye, Edit2, Loader2, Save, Truck, AlertCircle, Calendar, Trash2 } from 'lucide-react';
+import { Search, Plus, Eye, Edit2, Loader2, Save, Truck, AlertCircle, Calendar, Trash2, Building2 } from 'lucide-react';
 import { 
   Badge, ModalShell, FF, SLabel, PaginationBar, 
   TableShell, InfoRow, SBox, FormError, iStyle 
@@ -170,7 +170,7 @@ export default function VehiclesPage() {
         </div>
       ) : (
         <>
-          <TableShell headers={[{label:'Plat Nomor'},{label:'Brand/Model'},{label:'Tipe'},{label:'Driver & Dept'},{label:'Tahun/Warna'},{label:'Pajak',right:true},{label:'Amount',right:true},{label:'Status',right:true},{label:'Aksi',right:true}]} loading={loading} colSpan={9}>
+          <TableShell headers={[{label:'Plat Nomor'},{label:'Brand/Model'},{label:'Tipe'},{label:'Perusahaan'},{label:'Tahun/Warna'},{label:'Pajak',right:true},{label:'Amount',right:true},{label:'Status',right:true},{label:'Aksi',right:true}]} loading={loading} colSpan={9}>
             {rows.length===0 ? (
               <tr><td colSpan={9} className="py-14 text-center">
                 <Truck size={36} className="text-text-3 mx-auto mb-3 block" />
@@ -186,8 +186,10 @@ export default function VehiclesPage() {
                   <td className="td-p font-600 text-text">{v.brand_model||'—'}</td>
                   <td className="td-p text-sm text-text-2">{v.vehicle_type||'—'}</td>
                   <td className="td-p">
-                    <div className="text-sm-bold text-text">{v.driver_name||'—'}</div>
-                    {v.department&&<div className="text-xs-muted">{v.department}</div>}
+                    <div className="flex items-center gap-1 text-sm text-text-2">
+                      <Building2 size={12} className="shrink-0 text-text-3" />
+                      <span className="truncate max-w-[120px]">{v.company||'—'}</span>
+                    </div>
                   </td>
                   <td className="td-p text-sm-muted">{v.year||'—'} {v.color?`/ ${v.color}`:''}</td>
                   <td className="td-p text-right">
