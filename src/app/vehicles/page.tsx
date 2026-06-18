@@ -222,7 +222,7 @@ export default function VehiclesPage() {
                   <td className="td-p">
                     <div className="flex items-center gap-1 text-sm text-text-2">
                       <Building2 size={12} className="shrink-0 text-text-3" />
-                      <span className="truncate max-w-[120px]">{v.company||'—'}</span>
+                      <span>{v.company||'—'}</span>
                     </div>
                   </td>
                   <td className="td-p text-sm-muted">{v.year||'—'} {v.color?`/ ${v.color}`:''}</td>
