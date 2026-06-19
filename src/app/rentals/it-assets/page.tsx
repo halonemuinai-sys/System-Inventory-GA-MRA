@@ -368,7 +368,7 @@ export default function ITRentalsPage() {
           <input 
             id="rent_search"
             type="text" 
-            placeholder="Cari item, billing ref, vendor..." 
+            placeholder="Cari item, serial, billing ref, vendor..." 
             value={search} 
             onChange={e => setSearch(e.target.value)} 
             onKeyDown={e => e.key === 'Enter' && handleSearch()}

@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     let idx = 1;
 
     if (search) {
-      conds.push(`(r.item_name ILIKE $${idx} OR r.order_id ILIKE $${idx} OR v.vendor_name ILIKE $${idx} OR r.device_type ILIKE $${idx})`);
+      conds.push(`(r.item_name ILIKE $${idx} OR r.order_id ILIKE $${idx} OR v.vendor_name ILIKE $${idx} OR r.device_type ILIKE $${idx} OR r.unit_code ILIKE $${idx})`);
       params.push(`%${search}%`); idx++;
     }
     if (compId) {
