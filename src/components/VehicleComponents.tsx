@@ -1,5 +1,5 @@
 import React from 'react';
-import { Truck, Calendar, Loader2, Save, Trash2, Edit2 } from 'lucide-react';
+import { Truck, Calendar, Loader2, Save, Trash2, Edit2, Copy, Check, ExternalLink, Link2 } from 'lucide-react';
 import { ModalShell, Badge, SBox, InfoRow, FormError, SLabel, FF } from './PageShared';
 
 const fmt = (v: number) => new Intl.NumberFormat('id-ID').format(v || 0);
@@ -14,6 +14,18 @@ interface VehicleDetailModalProps {
 }
 
 export function VehicleDetailModal({ detail, dlLoading, onClose, onEdit, STAT_C }: VehicleDetailModalProps) {
+  const [copied, setCopied] = React.useState(false);
+
+  React.useEffect(() => {
+    setCopied(false);
+  }, [detail]);
+
+  const handleCopy = (url: string) => {
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   if (!detail && !dlLoading) return null;
   return (
     <ModalShell title={detail ? `Kendaraan — ${detail.plate_number}` : 'Memuat…'} onClose={onClose} size="md">
@@ -47,6 +59,32 @@ export function VehicleDetailModal({ detail, dlLoading, onClose, onEdit, STAT_C 
               }/>
             </SBox>
           </div>
+          {detail.doc_url && (
+            <div className="info-card flex items-center justify-between gap-4 p-3 bg-slate-50 border border-slate-200/60 rounded-xl">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs-bold text-text-2 mb-1 flex items-center gap-1">
+                  <Link2 size={12} className="text-text-3" /> Lampiran / Dokumen
+                </p>
+                <a 
+                  href={detail.doc_url} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="text-sm text-blue hover:underline break-all flex items-center gap-1 font-600"
+                >
+                  <ExternalLink size={13} className="shrink-0" />
+                  {detail.doc_url}
+                </a>
+              </div>
+              <button 
+                onClick={() => handleCopy(detail.doc_url)} 
+                className="btn py-1.5 px-3 text-xs shrink-0 flex items-center gap-1.5 border border-slate-200 hover:bg-slate-100 rounded-lg"
+                title="Salin Link"
+              >
+                {copied ? <Check size={12} className="text-emerald" /> : <Copy size={12} />}
+                <span>{copied ? 'Tersalin' : 'Salin'}</span>
+              </button>
+            </div>
+          )}
           {detail.information && (
             <div className="info-card">
               <p className="text-xs-bold mb-1">Informasi</p>
@@ -135,6 +173,17 @@ export function VehicleFormModal({
             </select>
           </FF>
         </div>
+        <FF label="Link Lampiran / Dokumen" id="veh_doc_url">
+          <input 
+            id="veh_doc_url" 
+            type="text" 
+            value={form.doc_url || ''} 
+            onChange={e => onChange('doc_url', e.target.value)} 
+            placeholder="https://example.com/document.pdf" 
+            className="input-premium" 
+            title="Link Lampiran / Dokumen"
+          />
+        </FF>
         <FF label="Informasi Tambahan" id="veh_info">
           <textarea id="veh_info" rows={2} value={form.information} onChange={e => onChange('information', e.target.value)} placeholder="Catatan tambahan..." className="input-premium resize-y" title="Informasi Tambahan"/>
         </FF>

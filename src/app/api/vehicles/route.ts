@@ -29,6 +29,7 @@ export async function GET(request: Request) {
         SELECT v.id, v.plate_number, v.chassis_number, v.vehicle_type,
                v.brand_model, v.year, v.color, v.driver_name, v.department,
                v.tax_date, v.last_km, v.last_service_date, v.status, v.information,
+               v.doc_url,
                c.name AS company, c.id AS company_id
         FROM vehicles v
         LEFT JOIN m_company c ON v.company_id = c.id
@@ -60,13 +61,13 @@ export async function POST(request: Request) {
     const res = await query(`
       INSERT INTO vehicles (company_id, plate_number, chassis_number, vehicle_type,
         brand_model, year, color, driver_name, department, tax_date, last_km,
-        last_service_date, status, information)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+        last_service_date, status, information, doc_url)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
       RETURNING id, plate_number
     `, [b.company_id, b.plate_number.trim(), b.chassis_number||null, b.vehicle_type||null,
         b.brand_model||null, b.year||null, b.color||null, b.driver_name||null,
         b.department||null, b.tax_date||null, b.last_km||null, b.last_service_date||null,
-        b.status||'Aktif', b.information||null]);
+        b.status||'Aktif', b.information||null, b.doc_url||null]);
 
     return NextResponse.json(res.rows[0], { status: 201 });
   } catch (error: any) {

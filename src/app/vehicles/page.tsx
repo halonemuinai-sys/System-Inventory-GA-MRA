@@ -20,7 +20,8 @@ const STAT_C: Record<string,string> = { Aktif:'badge-emerald', Active:'badge-eme
 const EMPTY = { 
   company_id:'', plate_number:'', chassis_number:'', vehicle_type:'', 
   brand_model:'', year:'', color:'', driver_name:'', department:'', 
-  tax_date:'', last_km:'', last_service_date:'', status:'Aktif', information:'' 
+  tax_date:'', last_km:'', last_service_date:'', status:'Aktif', information:'',
+  doc_url:'' 
 };
 
 export default function VehiclesPage() {
@@ -94,7 +95,8 @@ export default function VehiclesPage() {
       last_km:String(d.last_km||''), 
       last_service_date:d.last_service_date?d.last_service_date.split('T')[0]:'', 
       status:d.status||'Aktif', 
-      information:d.information||'' 
+      information:d.information||'',
+      doc_url:d.doc_url||''
     }); 
     setFormErr(''); 
   };

@@ -18,11 +18,11 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     await query(`
       UPDATE vehicles SET plate_number=$1, chassis_number=$2, vehicle_type=$3, brand_model=$4,
         year=$5, color=$6, driver_name=$7, department=$8, tax_date=$9, last_km=$10,
-        last_service_date=$11, status=$12, information=$13, company_id=$14
-      WHERE id=$15`,
+        last_service_date=$11, status=$12, information=$13, company_id=$14, doc_url=$15
+      WHERE id=$16`,
       [b.plate_number.trim(), b.chassis_number||null, b.vehicle_type||null, b.brand_model||null,
        b.year||null, b.color||null, b.driver_name||null, b.department||null, b.tax_date||null,
-       b.last_km||null, b.last_service_date||null, b.status||'Aktif', b.information||null, b.company_id, id]);
+       b.last_km||null, b.last_service_date||null, b.status||'Aktif', b.information||null, b.company_id, b.doc_url||null, id]);
     return NextResponse.json({ message: 'Updated' });
   } catch (error: any) {
     if (error.code === '23505') return NextResponse.json({ error: 'Nomor plat sudah digunakan' }, { status: 409 });

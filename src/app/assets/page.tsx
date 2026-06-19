@@ -69,6 +69,9 @@ const fmt = (v: number) =>
 
 const parseNum = (s: string) => parseFloat(s.replace(/\./g, '')) || 0;
 const fmtCurrency = (s: string) => {
+  if (typeof s === 'string' && s.includes('.')) {
+    s = s.split('.')[0];
+  }
   const num = String(s).replace(/\D/g, '');
   if (!num) return '';
   return new Intl.NumberFormat('id-ID').format(parseInt(num));
