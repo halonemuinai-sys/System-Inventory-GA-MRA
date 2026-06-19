@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     let idx = 1;
 
     if (search) {
-      conditions.push(`(v.vendor_name ILIKE $${idx} OR v.vendor_code ILIKE $${idx} OR v.phone ILIKE $${idx} OR v.pic_name ILIKE $${idx})`);
+      conditions.push(`(v.vendor_name ILIKE $${idx} OR v.vendor_code ILIKE $${idx} OR v.phone ILIKE $${idx} OR v.pic_name ILIKE $${idx} OR vc.name ILIKE $${idx})`);
       params.push(`%${search}%`);
       idx++;
     }

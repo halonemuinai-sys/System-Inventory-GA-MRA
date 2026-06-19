@@ -299,7 +299,7 @@ export default function VendorsPage() {
           <Search size={15} className="search-icon" />
           <input
             id="ven_search"
-            type="text" placeholder="Cari nama, kode, PIC, telepon..."
+            type="text" placeholder="Cari nama, kode, kategori, PIC, telepon..."
             value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
             className="input-premium w-full pl-9"
             title="Cari Vendor"
