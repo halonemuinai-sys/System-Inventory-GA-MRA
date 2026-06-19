@@ -4,7 +4,7 @@ import {
 import { Badge, ModalShell, FF, SLabel, SBox, InfoRow, FormError } from '@/components/PageShared';
 
 // ── Types ─────────────────────────────────────────────────────
-interface VendorDetail {
+export interface Vendor {
   id: number;
   vendor_code: string;
   vendor_name: string;
@@ -20,6 +20,9 @@ interface VendorDetail {
   contract_end: string;
   contract_value: number;
   review_status: string;
+}
+
+export interface VendorDetail extends Vendor {
   vendor_category_id: number;
   expense_category_id: number;
   detail: string;
@@ -38,7 +41,7 @@ interface VendorDetail {
   updated_at: string;
 }
 
-interface Meta {
+export interface Meta {
   categories:        { id: number; name: string }[];
   expenseCategories: { id: number; name: string }[];
   divisions:         { id: number; name: string }[];
@@ -46,7 +49,7 @@ interface Meta {
   banks:             { id: number; name: string }[];
 }
 
-interface FormData {
+export interface FormData {
   vendor_code: string; vendor_name: string;
   vendor_category_id: string; expense_category_id: string;
   detail: string; division_id: string; partnership_company_id: string;
@@ -57,6 +60,11 @@ interface FormData {
   top_days: string; contract_value: string;
   review_status: string; rating: string; status: string;
 }
+
+export const STAT_CLS: Record<string, string> = {
+  Active: 'badge-emerald', Inactive: 'badge-slate', 'Pending Evaluation': 'badge-amber',
+};
+
 
 // ── Star rating display ───────────────────────────────────────
 export function Stars({ rating, size = 13, onClick }: { rating: number; size?: number; onClick?: (n: number) => void }) {

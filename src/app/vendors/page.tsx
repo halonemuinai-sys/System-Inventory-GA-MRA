@@ -6,65 +6,10 @@ import {
   RefreshCw, Trash2, AlertCircle, Users, Handshake, Coins
 } from 'lucide-react';
 import { Badge, PaginationBar, TableShell } from '@/components/PageShared';
-import { Stars, VendorDetailModal, VendorFormModal } from '@/components/VendorComponents';
-
-// ── Types ─────────────────────────────────────────────────────
-interface Vendor {
-  id: number;
-  vendor_code: string;
-  vendor_name: string;
-  category: string;
-  expense_category: string;
-  pic_name: string;
-  pic_position: string;
-  phone: string;
-  email: string;
-  rating: number;
-  status: string;
-  contract_start: string;
-  contract_end: string;
-  contract_value: number;
-  review_status: string;
-}
-
-interface VendorDetail extends Vendor {
-  vendor_category_id: number;
-  expense_category_id: number;
-  detail: string;
-  division_id: number;
-  division: string;
-  partnership_company_id: number;
-  partnership_company: string;
-  address: string;
-  npwp: string;
-  bank_id: number;
-  bank_name: string;
-  account_name: string;
-  account_number: string;
-  top_days: number;
-  created_at: string;
-  updated_at: string;
-}
-
-interface Meta {
-  categories:        { id: number; name: string }[];
-  expenseCategories: { id: number; name: string }[];
-  divisions:         { id: number; name: string }[];
-  companies:         { id: number; name: string }[];
-  banks:             { id: number; name: string }[];
-}
-
-interface FormData {
-  vendor_code: string; vendor_name: string;
-  vendor_category_id: string; expense_category_id: string;
-  detail: string; division_id: string; partnership_company_id: string;
-  pic_name: string; pic_position: string; phone: string; email: string;
-  address: string; npwp: string;
-  bank_id: string; account_name: string; account_number: string;
-  contract_start: string; contract_end: string;
-  top_days: string; contract_value: string;
-  review_status: string; rating: string; status: string;
-}
+import {
+  Stars, VendorDetailModal, VendorFormModal,
+  Vendor, VendorDetail, Meta, FormData, STAT_CLS
+} from '@/components/VendorComponents';
 
 // ── Helpers ───────────────────────────────────────────────────
 const fmt = (v: number) =>
@@ -81,11 +26,6 @@ const EMPTY_FORM: FormData = {
   top_days: '', contract_value: '',
   review_status: '', rating: '', status: 'Active',
 };
-
-const STAT_CLS: Record<string, string> = {
-  Active: 'badge-emerald', Inactive: 'badge-slate', 'Pending Evaluation': 'badge-amber',
-};
-
 const parseNum = (s: string) => parseFloat(s.replace(/\./g, '')) || 0;
 const fmtCurrency = (s: string) => {
   if (typeof s === 'string' && s.includes('.')) {
