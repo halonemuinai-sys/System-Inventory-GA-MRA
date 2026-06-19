@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Search, Plus, Eye, Edit2, Phone, Mail,
-  RefreshCw, Trash2, AlertCircle, Users, Handshake, Coins
+  RefreshCw, Trash2, AlertCircle, Users, Handshake, Coins, Play
 } from 'lucide-react';
 import { Badge, PaginationBar, TableShell } from '@/components/PageShared';
 import {
@@ -26,6 +26,7 @@ const EMPTY_FORM: FormData = {
   top_days: '', contract_value: '',
   review_status: '', rating: '', status: 'Active',
 };
+
 const parseNum = (s: string) => parseFloat(s.replace(/\./g, '')) || 0;
 const fmtCurrency = (s: string) => {
   if (typeof s === 'string' && s.includes('.')) {
@@ -44,12 +45,17 @@ export default function VendorsPage() {
   const [total, setTotal]           = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [page, setPage]             = useState(1);
-  const [loading, setLoading]       = useState(true);
+  const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState<string | null>(null);
 
   const [search, setSearch]     = useState('');
   const [catFilter, setCat]     = useState('');
   const [statFilter, setStat]   = useState('');
+
+  const [tempSearch, setTempSearch] = useState('');
+  const [tempCat, setTempCat]       = useState('');
+  const [tempStat, setTempStat]     = useState('');
+  const [hasProcessed, setHasProcessed] = useState(false);
 
   const [meta, setMeta] = useState<Meta>({
     categories: [], expenseCategories: [], divisions: [], companies: [], banks: [],
@@ -72,14 +78,23 @@ export default function VendorsPage() {
   }, []);
 
   // Fetch vendors
-  const fetchVendors = useCallback(async (p: number) => {
+  const fetchVendors = useCallback(async (
+    p: number,
+    currentSearch?: string,
+    currentCat?: string,
+    currentStat?: string
+  ) => {
     setLoading(true); setError(null);
+    const activeSearch = currentSearch !== undefined ? currentSearch : search;
+    const activeCat    = currentCat    !== undefined ? currentCat    : catFilter;
+    const activeStat   = currentStat   !== undefined ? currentStat   : statFilter;
+
     try {
       const qs = new URLSearchParams({
         page: String(p), limit: String(LIMIT),
-        ...(search    && { search }),
-        ...(catFilter && { category: catFilter }),
-        ...(statFilter && { status: statFilter }),
+        ...(activeSearch && { search: activeSearch }),
+        ...(activeCat    && { category: activeCat }),
+        ...(activeStat   && { status: activeStat }),
       });
       const res  = await fetch(`/api/vendors?${qs}`);
       if (!res.ok) throw new Error('Gagal memuat data vendor');
@@ -95,9 +110,29 @@ export default function VendorsPage() {
     }
   }, [search, catFilter, statFilter]);
 
-  useEffect(() => { fetchVendors(1); }, [fetchVendors]);
+  const handlePageChange = (p: number) => {
+    setPage(p);
+    if (hasProcessed) {
+      fetchVendors(p);
+    }
+  };
 
-  const handlePageChange = (p: number) => { setPage(p); fetchVendors(p); };
+  const handleProcess = () => {
+    const isSearchChanged = tempSearch !== search;
+    const isCatChanged = tempCat !== catFilter;
+    const isStatChanged = tempStat !== statFilter;
+
+    if (!isSearchChanged && !isCatChanged && !isStatChanged && hasProcessed) {
+      fetchVendors(1);
+    } else {
+      setSearch(tempSearch);
+      setCat(tempCat);
+      setStat(tempStat);
+      setPage(1);
+      setHasProcessed(true);
+      fetchVendors(1, tempSearch, tempCat, tempStat);
+    }
+  };
 
   // Open detail
   const openDetail = async (id: number) => {
@@ -166,6 +201,9 @@ export default function VendorsPage() {
       });
       if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Gagal menyimpan'); }
       setShowAdd(false); setEditVendor(null); setForm(EMPTY_FORM);
+      if (!hasProcessed) {
+        setHasProcessed(true);
+      }
       fetchVendors(page);
     } catch (e: any) {
       setFormError(e.message);
@@ -240,7 +278,8 @@ export default function VendorsPage() {
           <input
             id="ven_search"
             type="text" placeholder="Cari nama, kode, kategori, PIC, telepon..."
-            value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
+            value={tempSearch} onChange={e => setTempSearch(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleProcess(); }}
             className="input-premium w-full pl-9"
             title="Cari Vendor"
             aria-label="Cari data mitra vendor"
@@ -248,23 +287,30 @@ export default function VendorsPage() {
         </div>
         <select 
           id="ven_cat_filter"
-          value={catFilter} onChange={e => { setCat(e.target.value); setPage(1); }}
+          value={tempCat} onChange={e => setTempCat(e.target.value)}
           className="input-premium w-auto" title="Filter Kategori" aria-label="Filter berdasarkan kategori vendor">
           <option value="">Semua Kategori</option>
           {meta.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         <select 
           id="ven_stat_filter"
-          value={statFilter} onChange={e => { setStat(e.target.value); setPage(1); }}
+          value={tempStat} onChange={e => setTempStat(e.target.value)}
           className="input-premium w-auto" title="Filter Status" aria-label="Filter berdasarkan status vendor">
           <option value="">Semua Status</option>
           <option value="Active">Active</option>
           <option value="Inactive">Inactive</option>
           <option value="Pending Evaluation">Pending Evaluation</option>
         </select>
+        <button 
+          className="btn btn-primary flex items-center gap-1.5 shrink-0" 
+          onClick={handleProcess} 
+          title="Proses Pencarian"
+        >
+          <Play size={14} fill="currentColor" /> Proses
+        </button>
       </div>
 
-      {/* TABLE */}
+      {/* TABLE / INITIAL STATE */}
       {error ? (
         <div className="error-alert-container animate-slide-up" style={{ '--delay': '400ms' } as React.CSSProperties}>
           <AlertCircle size={36} className="text-rose mb-3" />
@@ -272,6 +318,19 @@ export default function VendorsPage() {
           <button className="btn btn-primary mt-4" onClick={() => fetchVendors(page)} title="Coba Memuat Ulang">
             <RefreshCw size={14} /> Coba Lagi
           </button>
+        </div>
+      ) : !hasProcessed ? (
+        <div 
+          className="animate-slide-up py-16 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/40 glow-slate flex flex-col items-center justify-center"
+          style={{ '--delay': '400ms' } as React.CSSProperties}
+        >
+          <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-3 shadow-sm">
+            <Search size={22} />
+          </div>
+          <p className="text-sm-bold text-text mb-1">Pencarian Vendor Partnerships</p>
+          <p className="text-xs-muted max-w-sm px-4">
+            Silakan atur kriteria filter di atas, lalu klik tombol <strong>Proses</strong> untuk memuat data.
+          </p>
         </div>
       ) : (
         <div className="animate-slide-up" style={{ '--delay': '400ms' } as React.CSSProperties}>
