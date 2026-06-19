@@ -54,6 +54,14 @@ export async function PUT(
     if (!vendor_name?.trim())
       return NextResponse.json({ error: 'Nama vendor wajib diisi' }, { status: 400 });
 
+    const dupCheck = await query(
+      `SELECT id FROM vendors WHERE LOWER(TRIM(vendor_name)) = LOWER($1) AND id <> $2`,
+      [vendor_name.trim(), id]
+    );
+    if (dupCheck.rows.length > 0) {
+      return NextResponse.json({ error: 'Nama vendor sudah terdaftar' }, { status: 409 });
+    }
+
     await query(`
       UPDATE vendors SET
         vendor_code            = $1,

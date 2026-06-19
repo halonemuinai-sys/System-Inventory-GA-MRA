@@ -92,6 +92,14 @@ export async function POST(request: Request) {
     if (!vendor_name?.trim())
       return NextResponse.json({ error: 'Nama vendor wajib diisi' }, { status: 400 });
 
+    const dupCheck = await query(
+      `SELECT id FROM vendors WHERE LOWER(TRIM(vendor_name)) = LOWER($1)`,
+      [vendor_name.trim()]
+    );
+    if (dupCheck.rows.length > 0) {
+      return NextResponse.json({ error: 'Nama vendor sudah terdaftar' }, { status: 409 });
+    }
+
     // Auto-generate code if blank
     let code = vendor_code?.trim() || null;
     if (!code) {

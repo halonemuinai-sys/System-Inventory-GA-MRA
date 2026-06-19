@@ -120,6 +120,10 @@ def migrate_vendors():
             vn = clean_str(r.get("Vendor / Company Name"))
             if not vn or vn.lower() in ["total", "total vendor", "done", "grand total"]: continue
             
+            # Check if vendor name already exists (case-insensitive) to prevent duplicates
+            exist = conn.execute(text("SELECT id FROM ga.vendors WHERE LOWER(TRIM(vendor_name)) = LOWER(TRIM(:vn))"), {"vn": vn}).fetchone()
+            if exist: continue
+            
             vcat = get_or_create(conn, "ga.m_vendor_category", "name", clean_str(r.get("Category")))
             ecat = get_or_create(conn, "ga.m_expense_category", "name", clean_str(r.get("Detail")))
             div  = get_or_create(conn, "ga.m_division", "name", clean_str(r.get("Division")))
