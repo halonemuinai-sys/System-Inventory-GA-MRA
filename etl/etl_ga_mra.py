@@ -129,6 +129,12 @@ def migrate_vendors():
             div  = get_or_create(conn, "ga.m_division", "name", clean_str(r.get("Division")))
             comp = get_or_create(conn, "ga.m_company", "name", clean_str(r.get("In partnership with")))
             bank = get_or_create(conn, "ga.m_bank", "name", clean_str(r.get("Bank")))
+            
+            vc = clean_str(r.get("Vendor Code"))
+            if not vc or vc.lower() == 'null':
+                seq = conn.execute(text("SELECT COUNT(*) FROM ga.vendors")).scalar()
+                vc = f"VND-{str(seq + 1).zfill(5)}"
+
             conn.execute(text("""
                 INSERT INTO ga.vendors (vendor_code, vendor_name, vendor_category_id, expense_category_id,
                   detail, division_id, partnership_company_id, pic_name, pic_position, phone, email,
@@ -140,7 +146,7 @@ def migrate_vendors():
                   vendor_name = EXCLUDED.vendor_name,
                   status = EXCLUDED.status
             """), {
-                "vc": clean_str(r.get("Vendor Code")),
+                "vc": vc,
                 "vn": vn,
                 "vcat": vcat, "ecat": ecat, "dt": clean_str(r.get("Detail")),
                 "div": div, "comp": comp,

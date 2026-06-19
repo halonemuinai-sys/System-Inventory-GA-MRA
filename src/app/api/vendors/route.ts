@@ -100,9 +100,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Nama vendor sudah terdaftar' }, { status: 409 });
     }
 
-    // Auto-generate code if blank
-    let code = vendor_code?.trim() || null;
-    if (!code) {
+    // Auto-generate code if blank or literal 'null'
+    let code = vendor_code?.trim() || '';
+    if (!code || code.toLowerCase() === 'null') {
       const seq = await query(`SELECT COUNT(*) FROM vendors`);
       const num = parseInt(seq.rows[0].count) + 1;
       code = `VND-${String(num).padStart(5, '0')}`;
