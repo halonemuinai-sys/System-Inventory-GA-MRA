@@ -31,7 +31,8 @@ const EMPTY = {
   company_id:'', insurance_company:'', insurance_type:'', category:'', 
   policy_number:'', start_date:'', end_date:'', vehicle_id:'', 
   vehicle_type:'', premium_idr:'', coverage_idr:'', broker:'', 
-  pic:'', contact_person:'', information:'', status:'Active' 
+  pic:'', contact_person:'', information:'', status:'Active',
+  doc_url:'' 
 };
 
 export default function InsurancePage() {
@@ -114,7 +115,8 @@ export default function InsurancePage() {
       pic:d.pic||'', 
       contact_person:d.contact_person||'', 
       information:d.information||'', 
-      status:d.status||'Active' 
+      status:d.status||'Active',
+      doc_url:d.doc_url||''
     });
     setFormErr('');
   };

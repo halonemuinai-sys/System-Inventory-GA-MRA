@@ -21,19 +21,48 @@ function mergeSpecs(brand: string, model: string, processor: string, os: string,
   return `${brand ? brand.trim() : ''} ${model ? model.trim() : ''} (${specs.join(', ')})`.trim();
 }
 
+async function connectHelpdeskClient(connectionString: string): Promise<Client> {
+  let client = new Client({
+    connectionString,
+    ssl: { rejectUnauthorized: false }
+  });
+  try {
+    await client.connect();
+    return client;
+  } catch (err: any) {
+    await client.end().catch(() => {});
+    const isSslError = err.message && err.message.includes('SSL');
+    const isTimeoutOrDnsError = err.code === 'ETIMEDOUT' || err.code === 'ENOTFOUND' || err.code === 'EADDRNOTAVAIL' || err.message?.includes('ETIMEDOUT');
+    
+    if (isTimeoutOrDnsError && connectionString.includes('host.docker.internal')) {
+      const newConnectionString = connectionString.replace('host.docker.internal', 'localhost');
+      return connectHelpdeskClient(newConnectionString);
+    }
+    
+    if (isSslError) {
+      client = new Client({ connectionString });
+      await client.connect();
+      return client;
+    }
+    throw err;
+  }
+}
+
 export async function POST() {
   const HELPDESK_URL = process.env.HELPDESK_DATABASE_URL;
   if (!HELPDESK_URL) {
     return NextResponse.json({ error: 'HELPDESK_DATABASE_URL is not set' }, { status: 500 });
   }
 
-  const helpdeskClient = new Client({
-    connectionString: HELPDESK_URL,
-    ssl: { rejectUnauthorized: false }
-  });
+  let helpdeskClient: Client;
+  try {
+    helpdeskClient = await connectHelpdeskClient(HELPDESK_URL);
+  } catch (err: any) {
+    console.error('Failed to connect to helpdesk DB:', err);
+    return NextResponse.json({ error: `Gagal koneksi database Helpdesk: ${err.message}` }, { status: 500 });
+  }
 
   try {
-    await helpdeskClient.connect();
 
     // 1. Fetch lookup maps from GA Database
     const gaCompaniesRes = await query('SELECT id, name FROM m_company WHERE is_active = true');

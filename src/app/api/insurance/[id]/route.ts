@@ -20,12 +20,12 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     UPDATE insurances SET company_id=$1, insurance_company=$2, insurance_type=$3, category=$4,
       policy_number=$5, start_date=$6, end_date=$7, vehicle_id=$8, vehicle_type=$9,
       premium_idr=$10, coverage_idr=$11, broker=$12, pic=$13, contact_person=$14,
-      information=$15, status=$16
-    WHERE id=$17`,
+      information=$15, status=$16, doc_url=$17
+    WHERE id=$18`,
     [b.company_id, b.insurance_company||null, b.insurance_type||null, b.category||null,
      b.policy_number||null, b.start_date||null, b.end_date||null, b.vehicle_id||null, b.vehicle_type||null,
      b.premium_idr||0, b.coverage_idr||null, b.broker||null, b.pic||null, b.contact_person||null,
-     b.information||null, b.status||'Active', id]);
+     b.information||null, b.status||'Active', b.doc_url||null, id]);
   return NextResponse.json({ message: 'Updated' });
 }
 

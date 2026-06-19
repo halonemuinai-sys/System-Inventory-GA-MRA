@@ -2,6 +2,33 @@ import { NextResponse } from 'next/server';
 import { Client } from 'pg';
 import { query } from '@/lib/db';
 
+async function connectHelpdeskClient(connectionString: string): Promise<Client> {
+  let client = new Client({
+    connectionString,
+    ssl: { rejectUnauthorized: false }
+  });
+  try {
+    await client.connect();
+    return client;
+  } catch (err: any) {
+    await client.end().catch(() => {});
+    const isSslError = err.message && err.message.includes('SSL');
+    const isTimeoutOrDnsError = err.code === 'ETIMEDOUT' || err.code === 'ENOTFOUND' || err.code === 'EADDRNOTAVAIL' || err.message?.includes('ETIMEDOUT');
+    
+    if (isTimeoutOrDnsError && connectionString.includes('host.docker.internal')) {
+      const newConnectionString = connectionString.replace('host.docker.internal', 'localhost');
+      return connectHelpdeskClient(newConnectionString);
+    }
+    
+    if (isSslError) {
+      client = new Client({ connectionString });
+      await client.connect();
+      return client;
+    }
+    throw err;
+  }
+}
+
 export async function GET() {
   const HELPDESK_URL = process.env.HELPDESK_DATABASE_URL;
   
@@ -10,13 +37,15 @@ export async function GET() {
     return await getFallbackGACompanies();
   }
 
-  const helpdeskClient = new Client({
-    connectionString: HELPDESK_URL,
-    ssl: { rejectUnauthorized: false }
-  });
+  let helpdeskClient: Client;
+  try {
+    helpdeskClient = await connectHelpdeskClient(HELPDESK_URL);
+  } catch (err: any) {
+    console.error('Failed to connect to helpdesk DB for companies:', err);
+    return await getFallbackGACompanies();
+  }
 
   try {
-    await helpdeskClient.connect();
     const res = await helpdeskClient.query(`
       SELECT DISTINCT name FROM (
         SELECT name FROM helpdesk."Company" WHERE name IS NOT NULL AND name <> ''

@@ -46,13 +46,44 @@ function mergeSpecs(brand, model, processor, os, ram, storage) {
   return `${brand ? brand.trim() : ''} ${model ? model.trim() : ''} (${specs.join(', ')})`.trim();
 }
 
+async function connectHelpdeskClient(connectionString) {
+  let client = new Client({
+    connectionString,
+    ssl: { rejectUnauthorized: false }
+  });
+  try {
+    await client.connect();
+    return client;
+  } catch (err) {
+    await client.end().catch(() => {});
+    const isSslError = err.message && err.message.includes('SSL');
+    const isTimeoutOrDnsError = err.code === 'ETIMEDOUT' || err.code === 'ENOTFOUND' || err.code === 'EADDRNOTAVAIL' || err.message?.includes('ETIMEDOUT');
+    
+    if (isTimeoutOrDnsError && connectionString.includes('host.docker.internal')) {
+      const newConnectionString = connectionString.replace('host.docker.internal', 'localhost');
+      return connectHelpdeskClient(newConnectionString);
+    }
+    
+    if (isSslError) {
+      client = new Client({ connectionString });
+      await client.connect();
+      return client;
+    }
+    throw err;
+  }
+}
+
 async function main() {
   console.log('=== STARTING IT ASSET SYNC PIPELINE ===');
   
-  const helpdeskClient = new Client({
-    connectionString: HELPDESK_URL,
-    ssl: { rejectUnauthorized: false }
-  });
+  let helpdeskClient;
+  try {
+    console.log('Connecting to Helpdesk database...');
+    helpdeskClient = await connectHelpdeskClient(HELPDESK_URL);
+  } catch (err) {
+    console.error('ERROR connecting to Helpdesk database:', err);
+    process.exit(1);
+  }
   
   const gaClient = new Client({
     connectionString: GA_URL,
@@ -60,8 +91,7 @@ async function main() {
   });
 
   try {
-    console.log('Connecting to databases...');
-    await helpdeskClient.connect();
+    console.log('Connecting to GA database...');
     await gaClient.connect();
     console.log('Databases connected successfully.');
 

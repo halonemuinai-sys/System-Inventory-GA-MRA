@@ -41,7 +41,7 @@ export async function GET(request: Request) {
       query(`
         SELECT i.id, i.policy_number, i.insurance_company, i.insurance_type, i.category,
                i.start_date, i.end_date, i.premium_idr, i.coverage_idr, i.status,
-               i.broker, i.pic, i.vehicle_type,
+               i.broker, i.pic, i.vehicle_type, i.doc_url,
                c.name AS company, c.id AS company_id,
                v.plate_number, v.id AS vehicle_id
          FROM insurances i
