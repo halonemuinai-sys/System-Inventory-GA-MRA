@@ -30,7 +30,7 @@ export async function GET() {
           ORDER BY qty DESC
         `),
         queryHelpdesk(`
-          SELECT COALESCE("vendorRef", 'Unknown Vendor') as vendor,
+          SELECT COALESCE(vendor, 'Unknown Vendor') as vendor,
                  COUNT(*) as qty, COALESCE(SUM("rentalCost"),0) as amount
           FROM helpdesk."Asset"
           WHERE "ownershipType" = 'RENTAL'

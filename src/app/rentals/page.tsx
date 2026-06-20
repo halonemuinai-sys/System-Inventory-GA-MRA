@@ -35,7 +35,7 @@ export default function RentalsPage() {
   const [appliedFilters, setApplied] = useState({ search: '', comp: '' });
   const [hasSearched, setHasSearched] = useState(false);
   const [kpi, setKpi]               = useState({ total_items: 0, total_price: 0 });
-  const [meta, setMeta]             = useState<{companies:any[];vendors:any[]}>({companies:[],vendors:[]});
+  const [meta, setMeta]             = useState<{companies:any[];vendors:any[];helpdeskUsers:any[];helpdeskCompanies:any[]}>({companies:[],vendors:[],helpdeskUsers:[],helpdeskCompanies:[]});
   const [detail, setDetail]         = useState<any>(null);
   const [dlLoading, setDlLoading]   = useState(false);
   const [showAdd, setShowAdd]       = useState(false);
@@ -49,11 +49,71 @@ export default function RentalsPage() {
   const [exporting, setExporting]   = useState(false);
   const LIMIT = 20;
 
+  const [allocateAsset, setAllocateAsset] = useState<any>(null);
+  const [allocUser, setAllocUser] = useState('');
+  const [allocCompany, setAllocCompany] = useState('');
+  const [submittingAlloc, setSubmittingAlloc] = useState(false);
+  const [allocError, setAllocError] = useState('');
+  const [allocSuccessMsg, setAllocSuccessMsg] = useState('');
+
+  const openAllocate = (asset: any) => {
+    setAllocateAsset(asset);
+    setAllocUser('');
+    setAllocCompany('');
+    setAllocError('');
+    setAllocSuccessMsg('');
+    setDetail(null);
+  };
+
+  const handleAllocSubmit = async () => {
+    if (!allocUser) {
+      setAllocError('Silakan pilih karyawan terlebih dahulu');
+      return;
+    }
+    if (!allocCompany) {
+      setAllocError('Silakan pilih entitas perusahaan terlebih dahulu');
+      return;
+    }
+
+    setSubmittingAlloc(true);
+    setAllocError('');
+
+    try {
+      const res = await fetch('/api/rentals/approval-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          assetId: allocateAsset.id,
+          userId: parseInt(allocUser),
+          companySelectId: allocCompany
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Gagal mengirim pengajuan alokasi');
+      }
+
+      setAllocSuccessMsg(data.message || 'Pengajuan alokasi berhasil dikirim.');
+    } catch (err: any) {
+      setAllocError(err.message);
+    } finally {
+      setSubmittingAlloc(false);
+    }
+  };
+
   useEffect(() => {
     Promise.all([
       fetch('/api/assets/meta').then(r=>r.json()),
       fetch('/api/vendors?all=true').then(r=>r.json()),
-    ]).then(([am, vm]) => setMeta({ companies: am.companies||[], vendors: vm.data||[] })).catch(()=>{});
+      fetch('/api/helpdesk/users').then(r=>r.json()).catch(()=>[]),
+      fetch('/api/helpdesk/companies').then(r=>r.json()).catch(()=>[]),
+    ]).then(([am, vm, hdUs, hdCos]) => setMeta({ 
+      companies: am.companies||[], 
+      vendors: vm.data||[],
+      helpdeskUsers: hdUs||[],
+      helpdeskCompanies: hdCos||[]
+    })).catch(()=>{});
   }, []);
 
   const load = useCallback(async (p: number, filters = appliedFilters) => {
@@ -338,7 +398,10 @@ export default function RentalsPage() {
               const st = STAT_C[expired ? 'Expired' : (r.status || 'Active')] || STAT_C.default;
               return (
                 <tr key={r.id} className="hover-row">
-                  <td className="td-p font-mono text-blue text-xs font-700">{r.order_id||'—'}</td>
+                  <td className="td-p">
+                    <div className="font-mono text-blue text-xs font-700">{r.order_id||'—'}</div>
+                    {r.vendor_name&&<div className="text-xs-muted mt-1">{r.vendor_name}</div>}
+                  </td>
                   <td className="td-p">
                     <div className="text-sm-bold text-text">{r.item_name}</div>
                     {r.device_type&&<div className="text-xs-muted mt-1">{r.device_type}</div>}
@@ -379,6 +442,7 @@ export default function RentalsPage() {
               <div className="detail-grid">
                 <SBox icon={<HardDrive size={14}/>} title="Detail Item">
                   <InfoRow label="Order ID"     value={detail.order_id}/>
+                  <InfoRow label="Vendor"       value={detail.vendor_name}/>
                   <InfoRow label="Tipe Perangkat" value={detail.device_type}/>
                   <InfoRow label="Kode Unit"    value={detail.unit_code}/>
                   <InfoRow label="Perusahaan"   value={detail.company}/>
@@ -394,10 +458,82 @@ export default function RentalsPage() {
                 </SBox>
               </div>
               <div className="modal-footer-actions">
-                <button type="button" className="btn btn-primary" onClick={()=>setDetail(null)} title="Tutup Modal">Tutup</button>
+                <button type="button" className="btn btn-primary flex-1" onClick={() => openAllocate(detail)} title="Ajukan Alokasi Perangkat">Ajukan Alokasi</button>
+                <button type="button" className="btn btn-outline" onClick={()=>setDetail(null)} title="Tutup Modal">Tutup</button>
               </div>
             </div>
           )}
+        </ModalShell>
+      )}
+
+      {allocateAsset && (
+        <ModalShell title="Ajukan Alokasi Perangkat" onClose={() => setAllocateAsset(null)} size="sm">
+          <div className="flex flex-col gap-4">
+            <div className="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-100 dark:border-slate-800 text-xs">
+              <p className="font-700 text-text">Unit: {allocateAsset.item_name}</p>
+              <p className="text-text-3 mt-1">Serial/Tag: {allocateAsset.unit_code || '—'}</p>
+              <p className="text-text-3">Alokasi Saat Ini: {allocateAsset.user_name || 'Belum ada'}</p>
+            </div>
+
+            {allocSuccessMsg ? (
+              <div className="p-4 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-300 rounded-xl text-center">
+                <p className="text-sm font-700">{allocSuccessMsg}</p>
+                <button type="button" className="btn btn-primary mt-4 w-full" onClick={() => setAllocateAsset(null)}>Selesai</button>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <label className="label-premium block mb-1">Karyawan / Pengguna</label>
+                  <SearchableSelect
+                    id="alloc_user"
+                    value={allocUser}
+                    onChange={v => setAllocUser(String(v))}
+                    options={meta.helpdeskUsers.map((u: any) => ({
+                      id: String(u.id),
+                      name: `${u.name} (${u.email} - ${u.department || 'No Dept'})`
+                    }))}
+                    placeholder="— Pilih Karyawan —"
+                  />
+                </div>
+
+                <div>
+                  <label className="label-premium block mb-1">Entitas Perusahaan</label>
+                  <SearchableSelect
+                    id="alloc_company"
+                    value={allocCompany}
+                    onChange={v => setAllocCompany(String(v))}
+                    options={meta.helpdeskCompanies.map((c: any) => ({
+                      id: c.id,
+                      name: c.name
+                    }))}
+                    placeholder="— Pilih Perusahaan —"
+                  />
+                </div>
+
+                {allocError && <FormError msg={allocError} />}
+
+                <div className="modal-footer-actions mt-2">
+                  <button 
+                    type="button" 
+                    className="btn btn-primary flex-1" 
+                    onClick={handleAllocSubmit} 
+                    disabled={submittingAlloc}
+                  >
+                    {submittingAlloc ? <Loader2 size={14} className="animate-spin mr-1" /> : null}
+                    Kirim Pengajuan
+                  </button>
+                  <button 
+                    type="button" 
+                    className="btn btn-outline" 
+                    onClick={() => setAllocateAsset(null)}
+                    disabled={submittingAlloc}
+                  >
+                    Batal
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </ModalShell>
       )}
     </div>

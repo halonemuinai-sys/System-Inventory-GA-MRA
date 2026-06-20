@@ -27,6 +27,7 @@ const menuGroups = [
       { icon: Truck,     label: 'Vehicles',       href: '/vehicles' },
       { icon: HardDrive, label: 'Device Rental',  href: '/rentals' },
       { icon: HardDrive, label: 'IT Rentals',     href: '/rentals/it-assets' },
+      { icon: BadgeCheck, label: 'Approval Rental', href: '/rentals/approvals' },
       { icon: Wrench,    label: 'Maintenance',    href: '/maintenance' },
     ],
   },

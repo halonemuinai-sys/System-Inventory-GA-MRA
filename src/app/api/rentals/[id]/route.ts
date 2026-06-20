@@ -22,6 +22,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
           SELECT 
             a.id,
             a."vendorRef" as order_id,
+            a.vendor as vendor_name,
             a."assetTag" as unit_code,
             a."rentalCost" as price,
             a."rentalStart" as start_rent,
@@ -67,6 +68,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         return NextResponse.json({
           id: r.id,
           order_id: r.order_id,
+          vendor_name: r.vendor_name || null,
           item_name: mergeSpecs(r.brand, r.model, r.processor, r.os, r.ram, r.storage),
           device_type: r.device_type,
           unit_code: r.unit_code,
