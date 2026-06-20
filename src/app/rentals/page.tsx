@@ -460,15 +460,9 @@ export default function RentalsPage() {
 
       {allocateAsset && (
         <ModalShell title="Ajukan Alokasi Perangkat" onClose={() => setAllocateAsset(null)} size="sm">
-          <div className="flex flex-col gap-4">
-            <div className="bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-100 dark:border-slate-800 text-xs">
-              <p className="font-700 text-text">Unit: {allocateAsset.item_name}</p>
-              <p className="text-text-3 mt-1">Serial/Tag: {allocateAsset.unit_code || '—'}</p>
-              <p className="text-text-3">Alokasi Saat Ini: {allocateAsset.user_name || 'Belum ada'}</p>
-            </div>
-
+          <div className="flex flex-col gap-4" style={{ minHeight: '340px' }}>
             {allocSuccessMsg ? (
-              <div className="p-4 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-300 rounded-xl text-center">
+              <div className="p-4 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-300 rounded-xl text-center my-auto">
                 <p className="text-sm font-700">{allocSuccessMsg}</p>
                 <button type="button" className="btn btn-primary mt-4 w-full" onClick={() => setAllocateAsset(null)}>Selesai</button>
               </div>
@@ -485,12 +479,32 @@ export default function RentalsPage() {
                       name: `${u.name} (${u.email} - ${u.department || 'No Dept'})`
                     }))}
                     placeholder="— Pilih Karyawan —"
-                    direction="up"
+                    direction="down"
                   />
                 </div>
-                 {allocError && <FormError msg={allocError} />}
 
-                <div className="modal-footer-actions mt-2">
+                <div className="bg-gradient-to-r from-blue-50/60 to-indigo-50/60 dark:from-slate-900/50 dark:to-slate-800/50 p-4 rounded-xl border border-blue-100/50 dark:border-slate-700/60 shadow-sm flex items-start gap-3 mt-1">
+                  <div className="p-2 bg-blue-500/10 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400 rounded-lg shrink-0">
+                    <HardDrive size={18} />
+                  </div>
+                  <div className="flex-1 text-xs">
+                    <p className="text-text font-bold text-sm mb-1 leading-snug">{allocateAsset.item_name}</p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-2 text-text-3">
+                      <div>
+                        <span className="font-semibold text-text-3">Serial/Tag:</span>
+                        <span className="font-mono ml-1 bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded border border-slate-100 dark:border-slate-800">{allocateAsset.unit_code || '—'}</span>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-text-3">Alokasi Saat Ini:</span>
+                        <span className="ml-1 font-semibold text-text-2">{allocateAsset.user_name || 'Belum ada'}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {allocError && <FormError msg={allocError} />}
+
+                <div className="modal-footer-actions mt-auto pt-2">
                   <button 
                     type="button" 
                     className="btn btn-primary flex-1" 
