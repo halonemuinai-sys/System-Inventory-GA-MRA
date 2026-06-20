@@ -85,23 +85,23 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { assetId, userId, companySelectId } = body;
+    const { assetId, userId } = body;
 
-    if (!assetId || !userId || !companySelectId) {
-      return NextResponse.json({ error: 'Data assetId, userId, dan companySelectId wajib diisi' }, { status: 400 });
+    if (!assetId || !userId) {
+      return NextResponse.json({ error: 'Data assetId dan userId wajib diisi' }, { status: 400 });
     }
 
-    // Parse companySelectId (e.g. "company_3" or "master_1")
-    let companyId: number | null = null;
-    let companyMasterId: number | null = null;
+    // Resolve current company settings from Helpdesk Asset table
+    const assetRes = await queryHelpdesk(
+      'SELECT "companyId", "companyMasterId" FROM helpdesk."Asset" WHERE id = $1',
+      [assetId]
+    );
 
-    if (companySelectId.startsWith('company_')) {
-      companyId = parseInt(companySelectId.replace('company_', ''));
-    } else if (companySelectId.startsWith('master_')) {
-      companyMasterId = parseInt(companySelectId.replace('master_', ''));
-    } else {
-      return NextResponse.json({ error: 'Format companySelectId tidak valid' }, { status: 400 });
+    if (assetRes.rows.length === 0) {
+      return NextResponse.json({ error: 'Perangkat tidak ditemukan di database Helpdesk' }, { status: 404 });
     }
+
+    const { companyId, companyMasterId } = assetRes.rows[0];
 
     // Check if there is already a pending request for this asset in GA DB
     const checkRes = await query(
@@ -113,7 +113,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Perangkat ini sudah memiliki pengajuan alokasi yang berstatus pending.' }, { status: 409 });
     }
 
-    // Insert new request into GA DB
+    // Insert new request into GA DB with resolved company settings
     await query(`
       INSERT INTO approval_requests (asset_id, user_id, company_id, company_master_id, status)
       VALUES ($1, $2, $3, $4, 'PENDING')

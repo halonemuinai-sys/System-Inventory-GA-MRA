@@ -115,7 +115,6 @@ export default function ITRentalsPage() {
 
   const [allocateAsset, setAllocateAsset] = useState<any>(null);
   const [allocUser, setAllocUser] = useState('');
-  const [allocCompany, setAllocCompany] = useState('');
   const [submittingAlloc, setSubmittingAlloc] = useState(false);
   const [allocError, setAllocError] = useState('');
   const [allocSuccessMsg, setAllocSuccessMsg] = useState('');
@@ -123,7 +122,6 @@ export default function ITRentalsPage() {
   const openAllocate = (asset: any) => {
     setAllocateAsset(asset);
     setAllocUser('');
-    setAllocCompany('');
     setAllocError('');
     setAllocSuccessMsg('');
     setDetail(null);
@@ -132,10 +130,6 @@ export default function ITRentalsPage() {
   const handleAllocSubmit = async () => {
     if (!allocUser) {
       setAllocError('Silakan pilih karyawan terlebih dahulu');
-      return;
-    }
-    if (!allocCompany) {
-      setAllocError('Silakan pilih entitas perusahaan terlebih dahulu');
       return;
     }
 
@@ -148,8 +142,7 @@ export default function ITRentalsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           assetId: allocateAsset.id,
-          userId: parseInt(allocUser),
-          companySelectId: allocCompany
+          userId: parseInt(allocUser)
         })
       });
 
@@ -172,13 +165,12 @@ export default function ITRentalsPage() {
       fetch('/api/rentals/companies').then(r=>r.json()),
       fetch('/api/vendors?all=true').then(r=>r.json()),
       fetch('/api/helpdesk/users').then(r=>r.json()).catch(()=>[]),
-      fetch('/api/helpdesk/companies').then(r=>r.json()).catch(()=>[]),
-    ]).then(([am, hcos, vm, hdUs, hdCos]) => setMeta({ 
+    ]).then(([am, hcos, vm, hdUs]) => setMeta({ 
       companies: hcos||[], 
       gaCompanies: am.companies||[], 
       vendors: vm.data||[],
       helpdeskUsers: hdUs||[],
-      helpdeskCompanies: hdCos||[]
+      helpdeskCompanies: []
     })).catch(()=>{});
   }, []);
 
@@ -624,20 +616,6 @@ export default function ITRentalsPage() {
                       name: `${u.name} (${u.email} - ${u.department || 'No Dept'})`
                     }))}
                     placeholder="— Pilih Karyawan —"
-                  />
-                </div>
-
-                <div>
-                  <label className="label-premium block mb-1">Entitas Perusahaan</label>
-                  <SearchableSelect
-                    id="alloc_company"
-                    value={allocCompany}
-                    onChange={v => setAllocCompany(String(v))}
-                    options={meta.helpdeskCompanies.map((c: any) => ({
-                      id: c.id,
-                      name: c.name
-                    }))}
-                    placeholder="— Pilih Perusahaan —"
                   />
                 </div>
 
