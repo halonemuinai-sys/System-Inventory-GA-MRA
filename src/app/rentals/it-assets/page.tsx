@@ -616,6 +616,7 @@ export default function ITRentalsPage() {
                       name: `${u.name} (${u.email} - ${u.department || 'No Dept'})`
                     }))}
                     placeholder="— Pilih Karyawan —"
+                    direction="up"
                   />
                 </div>
 

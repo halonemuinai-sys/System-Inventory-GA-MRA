@@ -304,6 +304,7 @@ export function SearchableSelect({
   id,
   disabled = false,
   className = '',
+  direction = 'down',
 }: {
   value: string | number;
   onChange: (val: string) => void;
@@ -312,6 +313,7 @@ export function SearchableSelect({
   id?: string;
   disabled?: boolean;
   className?: string;
+  direction?: 'up' | 'down';
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -337,6 +339,7 @@ export function SearchableSelect({
   }, [options, value]);
 
   // When dropdown opens or value changes, reset search
+  const firstOpenRef = useRef(true);
   useEffect(() => {
     if (!isOpen) {
       setSearch('');
@@ -401,18 +404,24 @@ export function SearchableSelect({
 
       {isOpen && (
         <div 
-          className="absolute z-50 w-full mt-1 bg-surface border border-border rounded-lg shadow-xl overflow-hidden"
+          className="absolute z-50 w-full bg-surface border border-border rounded-lg shadow-xl overflow-hidden"
           style={{ 
             position: 'absolute', 
             zIndex: 50, 
             width: '100%', 
-            marginTop: '0.25rem', 
             backgroundColor: 'var(--surface)', 
             border: '1px solid var(--border)', 
             borderRadius: '0.5rem', 
             boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2)',
             maxHeight: '220px', 
-            overflowY: 'auto'
+            overflowY: 'auto',
+            ...(direction === 'up' ? {
+              bottom: '100%',
+              marginBottom: '0.25rem'
+            } : {
+              top: '100%',
+              marginTop: '0.25rem'
+            })
           }}
         >
           <div className="py-1">
@@ -438,7 +447,7 @@ export function SearchableSelect({
                     }
                   }}
                 >
-                  — Pilih Vendor —
+                  {placeholder}
                 </div>
                 {filteredOptions.map(opt => {
                   const isSelected = String(opt.id) === String(value);
