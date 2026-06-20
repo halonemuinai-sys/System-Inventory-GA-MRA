@@ -11,73 +11,44 @@ export async function GET() {
     let rentalTypeRows: any[] = [];
     let rentalVendorRows: any[] = [];
 
-    try {
-      const [hdRentalRes, hdTypeRes, hdVendorRes] = await Promise.all([
-        queryHelpdesk(`SELECT COUNT(*) as count, COALESCE(SUM("rentalCost"),0) as value FROM helpdesk."Asset" WHERE "ownershipType" = 'RENTAL'`),
-        queryHelpdesk(`
-          SELECT 
-            CASE
-              WHEN LOWER(model) LIKE '%iphone%' OR LOWER(model) LIKE '%galaxy%' OR LOWER(brand) IN ('oppo', 'vivo', 'samsung') THEN 'Smartphone'
-              WHEN LOWER(model) LIKE '%imac%' OR LOWER(model) LIKE '%mac mini%' OR LOWER(model) LIKE '%all in one%' THEN 'iMac'
-              WHEN LOWER(model) LIKE '%printer%' OR LOWER(model) LIKE '%canon%' OR LOWER(model) LIKE '%epson%' THEN 'Printer'
-              ELSE 'Laptop'
-            END as type,
-            COUNT(*) as qty, 
-            COALESCE(SUM("rentalCost"),0) as amount
-          FROM helpdesk."Asset" 
-          WHERE "ownershipType" = 'RENTAL'
-          GROUP BY 1 
-          ORDER BY qty DESC
-        `),
-        queryHelpdesk(`
-          SELECT COALESCE(vendor, 'Unknown Vendor') as vendor,
-                 COUNT(*) as qty, COALESCE(SUM("rentalCost"),0) as amount
-          FROM helpdesk."Asset"
-          WHERE "ownershipType" = 'RENTAL'
-          GROUP BY 1 ORDER BY qty DESC LIMIT 10
-        `)
-      ]);
-      
-      rentalData.count = parseInt(hdRentalRes.rows[0].count) || 0;
-      rentalData.value = parseFloat(hdRentalRes.rows[0].value) || 0;
-      rentalTypeRows = hdTypeRes.rows.map((r: any) => ({
-        type: r.type,
-        qty: parseInt(r.qty) || 0,
-        amount: parseFloat(r.amount) || 0
-      }));
-      rentalVendorRows = hdVendorRes.rows.map((r: any) => ({
-        vendor: r.vendor,
-        qty: parseInt(r.qty) || 0,
-        amount: parseFloat(r.amount) || 0
-      }));
-    } catch (hdErr) {
-      console.warn('Dashboard Helpdesk live queries failed, falling back to GA DB:', hdErr);
-      
-      const [gaRentalRes, gaTypeRes, gaVendorRes] = await Promise.all([
-        query(`SELECT COUNT(*) as count, COALESCE(SUM(price),0) as value FROM device_rentals`),
-        query(`SELECT COALESCE(device_type,'Other') as type,
-                 COUNT(*) as qty, COALESCE(SUM(price),0) as amount
-               FROM device_rentals GROUP BY device_type ORDER BY qty DESC`),
-        query(`SELECT COALESCE(v.vendor_name,'Unknown') as vendor,
-                 COUNT(r.id) as qty, COALESCE(SUM(r.price),0) as amount
-               FROM device_rentals r
-               LEFT JOIN vendors v ON r.vendor_id = v.id
-               GROUP BY v.vendor_name ORDER BY qty DESC LIMIT 10`)
-      ]);
-
-      rentalData.count = parseInt(gaRentalRes.rows[0].count) || 0;
-      rentalData.value = parseFloat(gaRentalRes.rows[0].value) || 0;
-      rentalTypeRows = gaTypeRes.rows.map((r: any) => ({
-        type: r.type,
-        qty: parseInt(r.qty) || 0,
-        amount: parseFloat(r.amount) || 0
-      }));
-      rentalVendorRows = gaVendorRes.rows.map((r: any) => ({
-        vendor: r.vendor,
-        qty: parseInt(r.qty) || 0,
-        amount: parseFloat(r.amount) || 0
-      }));
-    }
+    const [hdRentalRes, hdTypeRes, hdVendorRes] = await Promise.all([
+      queryHelpdesk(`SELECT COUNT(*) as count, COALESCE(SUM("rentalCost"),0) as value FROM helpdesk."Asset" WHERE "ownershipType" = 'RENTAL'`),
+      queryHelpdesk(`
+        SELECT 
+          CASE
+            WHEN LOWER(model) LIKE '%iphone%' OR LOWER(model) LIKE '%galaxy%' OR LOWER(brand) IN ('oppo', 'vivo', 'samsung') THEN 'Smartphone'
+            WHEN LOWER(model) LIKE '%imac%' OR LOWER(model) LIKE '%mac mini%' OR LOWER(model) LIKE '%all in one%' THEN 'iMac'
+            WHEN LOWER(model) LIKE '%printer%' OR LOWER(model) LIKE '%canon%' OR LOWER(model) LIKE '%epson%' THEN 'Printer'
+            ELSE 'Laptop'
+          END as type,
+          COUNT(*) as qty, 
+          COALESCE(SUM("rentalCost"),0) as amount
+        FROM helpdesk."Asset" 
+        WHERE "ownershipType" = 'RENTAL'
+        GROUP BY 1 
+        ORDER BY qty DESC
+      `),
+      queryHelpdesk(`
+        SELECT COALESCE(vendor, 'Unknown Vendor') as vendor,
+               COUNT(*) as qty, COALESCE(SUM("rentalCost"),0) as amount
+        FROM helpdesk."Asset"
+        WHERE "ownershipType" = 'RENTAL'
+        GROUP BY 1 ORDER BY qty DESC LIMIT 10
+      `)
+    ]);
+    
+    rentalData.count = parseInt(hdRentalRes.rows[0].count) || 0;
+    rentalData.value = parseFloat(hdRentalRes.rows[0].value) || 0;
+    rentalTypeRows = hdTypeRes.rows.map((r: any) => ({
+      type: r.type,
+      qty: parseInt(r.qty) || 0,
+      amount: parseFloat(r.amount) || 0
+    }));
+    rentalVendorRows = hdVendorRes.rows.map((r: any) => ({
+      vendor: r.vendor,
+      qty: parseInt(r.qty) || 0,
+      amount: parseFloat(r.amount) || 0
+    }));
 
     // 2. Fetch other metrics from GA Database
     const [
