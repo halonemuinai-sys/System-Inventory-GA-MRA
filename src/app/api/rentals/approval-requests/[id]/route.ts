@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { query } from '@/lib/db';
 import { queryHelpdesk } from '@/lib/helpdeskDb';
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -13,9 +14,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ error: 'Action harus bernilai "approve" atau "reject"' }, { status: 400 });
     }
 
-    // 1. Fetch the request details
-    const requestRes = await queryHelpdesk(
-      'SELECT * FROM helpdesk."ApprovalRequest" WHERE id = $1',
+    // 1. Fetch the request details from GA database
+    const requestRes = await query(
+      'SELECT id, asset_id as "assetId", user_id as "userId", company_id as "companyId", company_master_id as "companyMasterId" FROM approval_requests WHERE id = $1',
       [requestId]
     );
 
@@ -26,7 +27,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const requestItem = requestRes.rows[0];
 
     if (action === 'approve') {
-      // 2. Update the Asset table
+      // 2. Update the Asset table in Helpdesk database
       await queryHelpdesk(`
         UPDATE helpdesk."Asset" 
         SET "userId" = $1, 
@@ -41,9 +42,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       ]);
     }
 
-    // 3. Delete the ApprovalRequest (Delete Approval Requests tapi pakai ini)
-    await queryHelpdesk(
-      'DELETE FROM helpdesk."ApprovalRequest" WHERE id = $1',
+    // 3. Delete the ApprovalRequest from GA database
+    await query(
+      'DELETE FROM approval_requests WHERE id = $1',
       [requestId]
     );
 
@@ -55,6 +56,6 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     });
   } catch (err: any) {
     console.error('Failed to process approval action:', err);
-    return NextResponse.json({ error: 'Gagal memproses persetujuan alokasi' }, { status: 500 });
+    return NextResponse.json({ error: 'Gagal memproses tindakan persetujuan alokasi' }, { status: 500 });
   }
 }
