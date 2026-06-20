@@ -10,7 +10,7 @@ export default function ApprovalsPage() {
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string|null>(null);
-  const [processingId, setProcessingId] = useState<number|null>(null);
+  const [processingId, setProcessingId] = useState<string|null>(null);
   const [processingType, setProcessingType] = useState<'approve'|'reject'|null>(null);
 
   const loadRequests = useCallback(async () => {
@@ -34,7 +34,7 @@ export default function ApprovalsPage() {
     loadRequests();
   }, [loadRequests]);
 
-  const handleAction = async (id: number, action: 'approve' | 'reject') => {
+  const handleAction = async (id: string, action: 'approve' | 'reject') => {
     if (confirm(`Apakah Anda yakin ingin ${action === 'approve' ? 'menyetujui' : 'menolak'} pengajuan alokasi ini?`)) {
       setProcessingId(id);
       setProcessingType(action);

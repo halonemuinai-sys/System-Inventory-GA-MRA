@@ -1,44 +1,64 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
 import { queryHelpdesk } from '@/lib/helpdeskDb';
+import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
-// GET: Get all pending approval requests
+// GET: Get all pending approval requests from Helpdesk
 export async function GET() {
   try {
-    // 1. Fetch pending requests from GA database
-    const reqRes = await query(`
-      SELECT id, asset_id, user_id, company_id, company_master_id, status, created_at as "createdAt"
-      FROM approval_requests
-      WHERE status = 'PENDING'
-      ORDER BY created_at DESC
+    // 1. Fetch pending requests from Helpdesk database
+    const reqRes = await queryHelpdesk(`
+      SELECT id, "entityId", "entityName", reason, "createdAt"
+      FROM helpdesk."ApprovalRequest"
+      WHERE "entityType" = 'ASSET_ALLOCATION' AND status = 'PENDING'
+      ORDER BY "createdAt" DESC
     `);
     
-    const requests = reqRes.rows;
-    if (requests.length === 0) {
+    const rawRequests = reqRes.rows;
+    if (rawRequests.length === 0) {
       return NextResponse.json([]);
     }
 
+    const requests = rawRequests.map((r: any) => {
+      const targetUserId = r.reason.startsWith('ALLOCATE_TO:') 
+        ? r.reason.replace('ALLOCATE_TO:', '') 
+        : r.reason;
+      return {
+        id: r.id,
+        assetId: r.entityId,
+        entityName: r.entityName,
+        userId: targetUserId,
+        createdAt: r.createdAt
+      };
+    });
+
     // 2. Fetch details from Helpdesk database
-    const assetIds = Array.from(new Set(requests.map(r => r.asset_id)));
-    const userIds = Array.from(new Set(requests.map(r => r.user_id)));
-    const companyIds = Array.from(new Set(requests.map(r => r.company_id).filter(Boolean)));
-    const masterIds = Array.from(new Set(requests.map(r => r.company_master_id).filter(Boolean)));
+    const assetIds = Array.from(new Set(requests.map(r => r.assetId)));
+    const userIds = Array.from(new Set(requests.map(r => r.userId)));
 
     // Fetch in parallel
-    const [assetsRes, usersRes, companiesRes, mastersRes] = await Promise.all([
+    const [assetsRes, usersRes] = await Promise.all([
       assetIds.length > 0 
-        ? queryHelpdesk('SELECT id, brand, model, "assetTag" as unit_code, "vendorRef" as order_id FROM helpdesk."Asset" WHERE id = ANY($1)', [assetIds])
+        ? queryHelpdesk('SELECT id, brand, model, "assetTag" as unit_code, "vendorRef" as order_id, "companyId", "companyMasterId" FROM helpdesk."Asset" WHERE id = ANY($1)', [assetIds])
         : { rows: [] },
       userIds.length > 0 
-        ? queryHelpdesk('SELECT id, name, email FROM helpdesk."User" WHERE id = ANY($1)', [userIds])
+        ? queryHelpdesk('SELECT id, name, email, "companyId" FROM helpdesk."User" WHERE id = ANY($1)', [userIds])
+        : { rows: [] }
+    ]);
+
+    const userCompanyIds = Array.from(new Set(usersRes.rows.map((u: any) => u.companyId).filter(Boolean)));
+    const assetCompanyIds = Array.from(new Set(assetsRes.rows.map((a: any) => a.companyId).filter(Boolean)));
+    const assetMasterIds = Array.from(new Set(assetsRes.rows.map((a: any) => a.companyMasterId).filter(Boolean)));
+
+    const allCompanyIds = Array.from(new Set([...userCompanyIds, ...assetCompanyIds]));
+
+    const [companiesRes, mastersRes] = await Promise.all([
+      allCompanyIds.length > 0 
+        ? queryHelpdesk('SELECT id, name FROM helpdesk."Company" WHERE id = ANY($1)', [allCompanyIds])
         : { rows: [] },
-      companyIds.length > 0 
-        ? queryHelpdesk('SELECT id, name FROM helpdesk."Company" WHERE id = ANY($1)', [companyIds])
-        : { rows: [] },
-      masterIds.length > 0 
-        ? queryHelpdesk('SELECT id, name FROM helpdesk."CompanyMaster" WHERE id = ANY($1)', [masterIds])
+      assetMasterIds.length > 0 
+        ? queryHelpdesk('SELECT id, name FROM helpdesk."CompanyMaster" WHERE id = ANY($1)', [assetMasterIds])
         : { rows: [] }
     ]);
 
@@ -50,19 +70,18 @@ export async function GET() {
 
     // Join data in-memory
     const combined = requests.map(r => {
-      const asset = assetMap.get(r.asset_id) || {};
-      const user = userMap.get(r.user_id) || {};
-      const companyName = r.company_id 
-        ? companyMap.get(r.company_id) 
-        : (r.company_master_id ? masterMap.get(r.company_master_id) : '');
+      const asset = assetMap.get(r.assetId) || {};
+      const user = userMap.get(r.userId) || {};
+      
+      const companyName = user.companyId 
+        ? companyMap.get(user.companyId) 
+        : (asset.companyId ? companyMap.get(asset.companyId) : (asset.companyMasterId ? masterMap.get(asset.companyMasterId) : ''));
 
       return {
         id: r.id,
-        assetId: r.asset_id,
-        userId: r.user_id,
-        companyId: r.company_id,
-        companyMasterId: r.company_master_id,
-        status: r.status,
+        assetId: r.assetId,
+        userId: r.userId,
+        status: 'PENDING',
         createdAt: r.createdAt,
         brand: asset.brand || 'Unknown',
         model: asset.model || 'Device',
@@ -91,9 +110,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Data assetId dan userId wajib diisi' }, { status: 400 });
     }
 
-    // Resolve current company settings from Helpdesk Asset table
+    // 1. Fetch asset details from Helpdesk database to verify it exists and get its name
     const assetRes = await queryHelpdesk(
-      'SELECT "companyId", "companyMasterId" FROM helpdesk."Asset" WHERE id = $1',
+      'SELECT id, brand, model, "assetTag" FROM helpdesk."Asset" WHERE id = $1',
       [assetId]
     );
 
@@ -101,11 +120,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Perangkat tidak ditemukan di database Helpdesk' }, { status: 404 });
     }
 
-    const { companyId, companyMasterId } = assetRes.rows[0];
+    const asset = assetRes.rows[0];
 
-    // Check if there is already a pending request for this asset in GA DB
-    const checkRes = await query(
-      'SELECT id FROM approval_requests WHERE asset_id = $1 AND status = \'PENDING\'',
+    // 2. Check if there is already a pending request for this asset in Helpdesk DB
+    const checkRes = await queryHelpdesk(
+      'SELECT id FROM helpdesk."ApprovalRequest" WHERE "entityId" = $1 AND "entityType" = \'ASSET_ALLOCATION\' AND status = \'PENDING\'',
       [assetId]
     );
 
@@ -113,15 +132,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Perangkat ini sudah memiliki pengajuan alokasi yang berstatus pending.' }, { status: 409 });
     }
 
-    // Insert new request into GA DB with resolved company settings
-    await query(`
-      INSERT INTO approval_requests (asset_id, user_id, company_id, company_master_id, status)
-      VALUES ($1, $2, $3, $4, 'PENDING')
-    `, [assetId, userId, companyId, companyMasterId]);
+    // 3. Insert new request into Helpdesk DB
+    const requestId = crypto.randomUUID();
+    const entityName = `${asset.brand} ${asset.model} (${asset.assetTag})`;
+    const reason = `ALLOCATE_TO:${userId}`;
+
+    await queryHelpdesk(`
+      INSERT INTO helpdesk."ApprovalRequest" (id, "entityType", "entityId", "entityName", reason, status, "createdAt", "updatedAt", "requestedById")
+      VALUES ($1, $2, $3, $4, $5, 'PENDING', NOW(), NOW(), 'ADMIN-01')
+    `, [requestId, 'ASSET_ALLOCATION', assetId, entityName, reason]);
 
     return NextResponse.json({ success: true, message: 'Pengajuan alokasi berhasil dikirim dan menunggu persetujuan.' });
   } catch (err: any) {
     console.error('Failed to submit approval request:', err);
-    return NextResponse.json({ error: 'Gagal mengirim pengajuan alokasi ke GA Database.' }, { status: 500 });
+    return NextResponse.json({ error: 'Gagal mengirim pengajuan alokasi ke Database Helpdesk.' }, { status: 500 });
   }
 }
