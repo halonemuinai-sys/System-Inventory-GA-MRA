@@ -7,6 +7,8 @@ export async function GET(request: Request) {
     const page   = Math.max(1, parseInt(searchParams.get('page')  || '1'));
     const limit  = Math.min(100, Math.max(5, parseInt(searchParams.get('limit') || '20')));
     const search = searchParams.get('search') || '';
+    const companyId = searchParams.get('company_id') || '';
+    const status    = searchParams.get('status') || '';
     const offset = (page - 1) * limit;
 
     const conds: string[] = [];
@@ -16,6 +18,16 @@ export async function GET(request: Request) {
     if (search) {
       conds.push(`(m.asset_name ILIKE $${idx} OR m.room_area ILIKE $${idx} OR m.service_type ILIKE $${idx} OR m.pic ILIKE $${idx})`);
       params.push(`%${search}%`); idx++;
+    }
+
+    if (companyId) {
+      conds.push(`m.company_id = $${idx}`);
+      params.push(parseInt(companyId)); idx++;
+    }
+
+    if (status) {
+      conds.push(`m.status = $${idx}`);
+      params.push(status); idx++;
     }
 
     const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';

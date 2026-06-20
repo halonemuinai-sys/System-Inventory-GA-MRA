@@ -186,9 +186,10 @@ export default function AssetsPage() {
     fetchKpi(filters);
   };
 
-  // Fetch KPI & Meta on mount
+  // Fetch KPI, Meta & initial Assets list on mount
   useEffect(() => {
     fetchKpi({ search: '', cat: '', stat: '', comp: '' });
+    fetchAssets(1, { search: '', cat: '', stat: '', comp: '' });
   }, []);
 
   // Pagination change effect
@@ -209,6 +210,7 @@ export default function AssetsPage() {
       setAssets(prev => prev.filter(a => a.id !== deleteItem.id));
       setSelectedIds(prev => prev.filter(id => id !== deleteItem.id));
       setDeleteItem(null);
+      fetchKpi(appliedFilters); // Refresh KPIs after delete
     } catch { 
       alert('Gagal menghapus aset'); 
     } finally {
@@ -380,7 +382,10 @@ export default function AssetsPage() {
       setShowAdd(false);
       setEditAsset(null);
       setForm(EMPTY_FORM);
-      if (hasSearched) fetchAssets(page, appliedFilters);
+      if (hasSearched) {
+        fetchAssets(page, appliedFilters);
+        fetchKpi(appliedFilters);
+      }
     } catch (e: any) {
       setFormError(e.message);
     } finally {

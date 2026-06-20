@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Search, Plus, Eye, Edit2, Loader2, Save, FileText, AlertCircle, Trash2 } from 'lucide-react';
-import { 
-  Badge, ModalShell, FF, SLabel, PaginationBar, 
-  TableShell, InfoRow, SBox, FormError, iStyle, SearchableSelect
-} from '@/components/PageShared';
+import { Search, Plus, Eye, Edit2, Trash2, AlertCircle, FileText } from 'lucide-react';
+import { Badge, PaginationBar, TableShell, SearchableSelect } from '@/components/PageShared';
+import {
+  DocumentDetailModal, DocumentFormModal, docStatus,
+  LegalDocument, LegalDocumentDetail, Meta, FormData
+} from '@/components/DocumentComponents';
 
 const fmt = (v: number) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(v || 0);
 const fmtDate = (d: string) => d ? new Date(d).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' }) : '—';
@@ -20,16 +21,7 @@ const fmtCurrency = (s: string) => {
   return new Intl.NumberFormat('id-ID').format(parseInt(num));
 };
 
-function docStatus(validUntil: string) {
-  if (!validUntil) return { label:'Active', colorClass:'badge-emerald', cls:'text-emerald' };
-  const d = new Date(validUntil); const now = new Date();
-  const diff = Math.ceil((d.getTime() - now.getTime()) / 86400000);
-  if (diff < 0)  return { label:'Expired', colorClass:'badge-rose', cls:'text-rose' };
-  if (diff <= 30) return { label:'Renewal', colorClass:'badge-amber', cls:'text-amber' };
-  return { label:'Active', colorClass:'badge-emerald', cls:'text-emerald' };
-}
-
-const EMPTY = { 
+const EMPTY_FORM: FormData = { 
   doc_number:'', doc_title:'', doc_type_id:'', doc_subtype:'agreement', 
   division_id:'', mra_party_id:'', counter_party:'', vendor_id:'', 
   pic_internal:'', valid_from:'', valid_until:'', physical_location:'', 
@@ -38,19 +30,23 @@ const EMPTY = {
 };
 
 export default function DocumentsPage() {
-  const [rows, setRows]             = useState<any[]>([]);
+  const [rows, setRows]             = useState<LegalDocument[]>([]);
   const [total, setTotal]           = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [page, setPage]             = useState(1);
-  const [loading, setLoading]       = useState(true);
+  const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState<string|null>(null);
   const [search, setSearch]         = useState('');
-  const [meta, setMeta]             = useState<{companies:any[];docTypes:any[];divisions:any[];vendors:any[]}>({companies:[],docTypes:[],divisions:[],vendors:[]});
-  const [detail, setDetail]         = useState<any>(null);
+  const [filterDocType, setFilterDocType]   = useState('');
+  const [filterMraParty, setFilterMraParty] = useState('');
+  const [filterStatus, setFilterStatus]     = useState('');
+  const [isSearched, setIsSearched]         = useState(false);
+  const [meta, setMeta]             = useState<Meta>({ companies:[], docTypes:[], divisions:[], vendors:[] });
+  const [detail, setDetail]         = useState<LegalDocumentDetail|null>(null);
   const [dlLoading, setDlLoading]   = useState(false);
   const [showAdd, setShowAdd]       = useState(false);
-  const [editRow, setEditRow]       = useState<any>(null);
-  const [form, setForm]             = useState<any>(EMPTY);
+  const [editRow, setEditRow]       = useState<LegalDocumentDetail|null>(null);
+  const [form, setForm]             = useState<FormData>(EMPTY_FORM);
   const [saving, setSaving]         = useState(false);
   const [formErr, setFormErr]       = useState('');
   const LIMIT = 20;
@@ -76,14 +72,36 @@ export default function DocumentsPage() {
   const load = useCallback(async (p: number) => {
     setLoading(true); setError(null);
     try {
-      const qs = new URLSearchParams({ page:String(p), limit:String(LIMIT), ...(search&&{search}) });
+      const qs = new URLSearchParams({
+        page: String(p),
+        limit: String(LIMIT),
+        ...(search && { search }),
+        ...(filterDocType && { doc_type_id: filterDocType }),
+        ...(filterMraParty && { mra_party_id: filterMraParty }),
+        ...(filterStatus && { status: filterStatus }),
+      });
       const res = await fetch(`/api/documents?${qs}`);
       const j = await res.json();
       setRows(j.data); setTotal(j.total); setTotalPages(j.totalPages); setPage(j.page);
+      setIsSearched(true);
     } catch(e:any) { setError(e.message); } finally { setLoading(false); }
-  }, [search]);
+  }, [search, filterDocType, filterMraParty, filterStatus]);
 
-  useEffect(() => { load(1); }, [load]);
+  const handleSearch = () => {
+    load(1);
+  };
+
+  const handleReset = () => {
+    setSearch('');
+    setFilterDocType('');
+    setFilterMraParty('');
+    setFilterStatus('');
+    setRows([]);
+    setTotal(0);
+    setTotalPages(1);
+    setPage(1);
+    setIsSearched(false);
+  };
 
   const handleDelete = async (id: number, name: string) => {
     if (!confirm(`Hapus dokumen "${name}"? Tindakan ini tidak bisa dibatalkan.`)) return;
@@ -126,9 +144,9 @@ export default function DocumentsPage() {
     setFormErr('');
   };
 
-  const openAdd   = () => { setEditRow(null); setForm(EMPTY); setFormErr(''); setShowAdd(true); };
-  const closeForm = () => { setShowAdd(false); setEditRow(null); setForm(EMPTY); setFormErr(''); };
-  const sf        = (k:string,v:string) => setForm((f:any) => ({...f,[k]:v}));
+  const openAdd   = () => { setEditRow(null); setForm(EMPTY_FORM); setFormErr(''); setShowAdd(true); };
+  const closeForm = () => { setShowAdd(false); setEditRow(null); setForm(EMPTY_FORM); setFormErr(''); };
+  const sf        = (k: keyof FormData, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   const save = async () => {
     if (!form.doc_number.trim()) { setFormErr('Nomor dokumen wajib diisi'); return; }
@@ -160,22 +178,72 @@ export default function DocumentsPage() {
         <button className="btn btn-primary" onClick={openAdd} title="Tambah Dokumen Baru"><Plus size={16}/> Tambah Dokumen</button>
       </div>
 
-      <div className="filter-bar">
-        <div className="search-box">
-          <Search size={15} className="search-icon"/>
+      <div className="filter-bar animate-slide-up flex flex-wrap gap-3 items-center bg-white p-4 rounded-2xl border border-slate-100 shadow-xs mb-6" style={{ position: 'relative', zIndex: 10 }}>
+        <div className="search-box flex-1 min-w-[240px]">
+          <Search size={15} className="search-icon text-slate-400"/>
           <input 
             id="doc_search"
             type="text" 
-            placeholder="Cari nomor dokumen, judul, vendor..." 
+            placeholder="Cari nomor dokumen, judul, lawan..." 
             value={search} 
-            onChange={e=>{setSearch(e.target.value);setPage(1);}} 
-            className="input-premium w-full pl-9" 
+            onChange={e => setSearch(e.target.value)} 
+            onKeyDown={e => e.key === 'Enter' && handleSearch()}
+            className="input-premium w-full pl-9 text-slate-700 font-500" 
             title="Cari Dokumen"
             aria-label="Cari dokumen legal"
           />
         </div>
-        <div className="summary-item">
-          <span className="text-text-3">Total: </span><span className="font-800 text-text">{fmt(total)} dokumen</span>
+
+        <div className="w-[180px]">
+          <SearchableSelect
+            id="filter_doc_type"
+            value={filterDocType}
+            onChange={v => setFilterDocType(v)}
+            options={meta.docTypes.map(t => ({ id: t.id, name: t.name }))}
+            placeholder="— Semua Tipe —"
+          />
+        </div>
+
+        <div className="w-[200px]">
+          <SearchableSelect
+            id="filter_mra_party"
+            value={filterMraParty}
+            onChange={v => setFilterMraParty(v)}
+            options={meta.companies.map(c => ({ id: c.id, name: c.name }))}
+            placeholder="— Semua Pihak MRA —"
+          />
+        </div>
+
+        <div className="w-[160px]">
+          <SearchableSelect
+            id="filter_status"
+            value={filterStatus}
+            onChange={v => setFilterStatus(v)}
+            options={[
+              { id: 'Active', name: 'Active' },
+              { id: 'Expired', name: 'Expired' },
+              { id: 'Terminated', name: 'Terminated' }
+            ]}
+            placeholder="— Semua Status —"
+          />
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={handleSearch}
+            className="btn btn-primary bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl shadow-xs transition-all duration-300 font-600 px-4 py-2 cursor-pointer flex items-center gap-1.5"
+            title="Terapkan Filter dan Cari"
+          >
+            <Search size={14} /> Cari
+          </button>
+
+          <button
+            onClick={handleReset}
+            className="btn border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl font-600 px-3.5 py-2 cursor-pointer transition-all duration-200"
+            title="Reset Filter"
+          >
+            Reset
+          </button>
         </div>
       </div>
 
@@ -184,6 +252,41 @@ export default function DocumentsPage() {
           <AlertCircle size={36} className="text-rose mb-3" />
           <p className="text-rose-bold">{error}</p>
           <button className="btn btn-primary mt-4" onClick={()=>load(page)} title="Coba Memuat Ulang">Coba Lagi</button>
+        </div>
+      ) : !isSearched ? (
+        <div className="animate-slide-up flex flex-col items-center justify-center bg-white border border-slate-100 rounded-3xl shadow-sm text-center max-w-2xl mx-auto my-6 relative overflow-hidden" style={{ padding: '5rem 2rem' }}>
+          {/* Decorative gradients */}
+          <div className="absolute -top-24 -left-24 w-48 h-48 rounded-full bg-blue-500/5 blur-3xl pointer-events-none"></div>
+          <div className="absolute -bottom-24 -right-24 w-48 h-48 rounded-full bg-indigo-500/5 blur-3xl pointer-events-none"></div>
+
+          {/* Modern Scanning Document Animation */}
+          <div className="relative w-28 h-36 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-between p-5 shadow-inner mb-8 overflow-hidden">
+            {/* Background scanner line */}
+            <div className="scanner-line absolute left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-600 shadow-md shadow-blue-500/80"></div>
+            
+            {/* Fake document text lines */}
+            <div className="w-1/2 h-1.5 bg-slate-200 rounded-full"></div>
+            <div className="w-full h-1.5 bg-slate-200/70 rounded-full"></div>
+            <div className="w-3/4 h-1.5 bg-slate-200/70 rounded-full"></div>
+            <div className="w-full h-1.5 bg-slate-200/70 rounded-full"></div>
+            <div className="w-5/6 h-1.5 bg-slate-200/70 rounded-full"></div>
+            <div className="w-2/3 h-1.5 bg-slate-200/70 rounded-full"></div>
+          </div>
+
+          <h2 className="text-lg font-950 text-slate-800 tracking-tight mb-2">Arsip Dokumen Legal</h2>
+          <p className="text-slate-400 text-xs font-600 max-w-sm mx-auto leading-relaxed">
+            Tentukan kriteria filter atau masukkan kata kunci di atas untuk menelusuri arsip dokumen resmi secara instan.
+          </p>
+
+          <style dangerouslySetInnerHTML={{__html: `
+            @keyframes scan {
+              0%, 100% { top: 0%; opacity: 0.3; }
+              50% { top: 100%; opacity: 1; }
+            }
+            .scanner-line {
+              animation: scan 2.5s ease-in-out infinite;
+            }
+          `}} />
         </div>
       ) : (
         <>
@@ -228,93 +331,29 @@ export default function DocumentsPage() {
         </>
       )}
 
-      {/* Detail */}
-      {(detail||dlLoading)&&(
-        <ModalShell title={detail?`Dokumen — ${detail.doc_number}`:'Memuat…'} onClose={()=>setDetail(null)} size="md">
-          {dlLoading||!detail ? <div className="flex-center py-12"><Loader2 size={28} className="animate-spin text-blue"/></div> : (
-            <div className="flex flex-col gap-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h2 className="text-lg-black">{detail.doc_title||'Untitled Document'}</h2>
-                  <p className="text-xs-muted mt-1">{detail.doc_type||''} {detail.doc_subtype?`· ${detail.doc_subtype}`:''}</p>
-                </div>
-                <div className="flex flex-col gap-2 items-end">
-                  <Badge label={docStatus(detail.valid_until).label} colorClass={docStatus(detail.valid_until).colorClass}/>
-                  {detail.auto_renewal&&<Badge label="Auto Renewal" colorClass="badge-emerald"/>}
-                </div>
-              </div>
-              <div className="detail-grid">
-                <SBox icon={<FileText size={14}/>} title="Identitas Dokumen">
-                  <InfoRow label="No. Dokumen"   value={detail.doc_number}/>
-                  <InfoRow label="Tipe"           value={detail.doc_type}/>
-                  <InfoRow label="Pihak MRA"     value={detail.company}/>
-                  <InfoRow label="Divisi"         value={detail.division}/>
-                  <InfoRow label="PIC Internal"  value={detail.pic_internal}/>
-                  <InfoRow label="Lokasi Fisik"  value={detail.physical_location}/>
-                </SBox>
-                <SBox title="Pihak Lawan & Kontrak">
-                  <InfoRow label="Counter Party" value={detail.counter_party}/>
-                  <InfoRow label="Vendor"        value={detail.vendor_name}/>
-                  <InfoRow label="Berlaku Mulai" value={fmtDate(detail.valid_from)}/>
-                  <InfoRow label="Berakhir"      value={fmtDate(detail.valid_until)}/>
-                  <InfoRow label="Nilai"         value={detail.amount?`Rp ${fmt(parseFloat(String(detail.amount)))}`:null}/>
-                  <InfoRow label="STO Status"    value={detail.sto_status}/>
-                </SBox>
-              </div>
-              {detail.notes&&<div className="info-card"><p className="text-xs-bold mb-1">Catatan</p><p className="text-sm-muted lh-1-6">{detail.notes}</p></div>}
-              {detail.digital_doc_url&&<div className="summary-item-blue w-full"><p className="text-xs-bold text-blue mb-1">Link Dokumen Digital</p><a href={detail.digital_doc_url} target="_blank" rel="noreferrer" className="text-blue text-sm font-semibold truncate block" title="Buka Dokumen Digital">{detail.digital_doc_url}</a></div>}
-              <div className="modal-footer-actions">
-                <button className="btn" onClick={()=>{setDetail(null);openEdit(detail.id);}} title="Edit Dokumen"><Edit2 size={14}/> Edit</button>
-                <button className="btn btn-primary" onClick={()=>setDetail(null)} title="Tutup Modal">Tutup</button>
-              </div>
-            </div>
-          )}
-        </ModalShell>
-      )}
+      {/* Detail Modal */}
+      <DocumentDetailModal
+        detail={detail}
+        dlLoading={dlLoading}
+        onClose={() => setDetail(null)}
+        openEdit={openEdit}
+        fmtDate={fmtDate}
+        fmt={fmt}
+      />
 
-      {/* Add/Edit */}
-      {(showAdd||editRow)&&(
-        <ModalShell title={editRow?`Edit Dokumen`:'Tambah Dokumen'} onClose={closeForm} size="lg" closeOnClickOutside={false}>
-          <div className="flex flex-col gap-4">
-            <FormError msg={formErr}/>
-            <SLabel>Identitas Dokumen</SLabel>
-            <div className="detail-grid">
-              <FF label="Nomor Dokumen" id="doc_number" required><input id="doc_number" type="text" value={form.doc_number} onChange={e=>sf('doc_number',e.target.value)} placeholder="PKS/2026/001" className="input-premium" title="Nomor Dokumen"/></FF>
-              <FF label="Judul Dokumen" id="doc_title"><input id="doc_title" type="text" value={form.doc_title} onChange={e=>sf('doc_title',e.target.value)} placeholder="Judul Dokumen" className="input-premium" title="Judul Dokumen"/></FF>
-              <FF label="Tipe Dokumen" id="doc_type"><select id="doc_type" value={form.doc_type_id} onChange={e=>sf('doc_type_id',e.target.value)} className="input-premium" title="Pilih Tipe"><option value="">— Pilih —</option>{meta.docTypes.map((t:any)=><option key={t.id} value={t.id}>{t.name}</option>)}</select></FF>
-              <FF label="Sub-tipe" id="doc_subtype"><select id="doc_subtype" value={form.doc_subtype} onChange={e=>sf('doc_subtype',e.target.value)} className="input-premium" title="Pilih Sub-tipe"><option value="agreement">Agreement</option><option value="ba_sale">BA Penjualan</option></select></FF>
-              <FF label="Pihak MRA" id="mra_party"><select id="mra_party" value={form.mra_party_id} onChange={e=>sf('mra_party_id',e.target.value)} className="input-premium" title="Pilih Perusahaan"><option value="">— Pilih —</option>{meta.companies.map((c:any)=><option key={c.id} value={c.id}>{c.name}</option>)}</select></FF>
-              <FF label="Divisi" id="division"><select id="division" value={form.division_id} onChange={e=>sf('division_id',e.target.value)} className="input-premium" title="Pilih Divisi"><option value="">— Pilih —</option>{meta.divisions.map((d:any)=><option key={d.id} value={d.id}>{d.name}</option>)}</select></FF>
-              <FF label="Counter Party / Pihak Lawan" id="counter_party"><input id="counter_party" type="text" value={form.counter_party} onChange={e=>sf('counter_party',e.target.value)} placeholder="Nama Pihak Lawan" className="input-premium" title="Pihak Lawan"/></FF>
-              <FF label="Vendor Terkait" id="vendor">
-                <SearchableSelect
-                  id="vendor"
-                  value={form.vendor_id}
-                  onChange={v => sf('vendor_id', v)}
-                  options={meta.vendors.map((v: any) => ({ id: v.id, name: v.vendor_name || v.name }))}
-                  placeholder="— Tidak ada —"
-                />
-              </FF>
-              <FF label="PIC Internal" id="pic_internal"><input id="pic_internal" type="text" value={form.pic_internal} onChange={e=>sf('pic_internal',e.target.value)} placeholder="Nama PIC" className="input-premium" title="PIC Internal"/></FF>
-              <FF label="Lokasi Fisik Arsip" id="phys_loc"><input id="phys_loc" type="text" value={form.physical_location} onChange={e=>sf('physical_location',e.target.value)} placeholder="Gedung / Lantai / Box" className="input-premium" title="Lokasi Fisik"/></FF>
-              <FF label="Berlaku Mulai" id="v_from"><input id="v_from" type="date" value={form.valid_from} onChange={e=>sf('valid_from',e.target.value)} className="input-premium" title="Mulai Berlaku" /></FF>
-              <FF label="Berakhir" id="v_until"><input id="v_until" type="date" value={form.valid_until} onChange={e=>sf('valid_until',e.target.value)} className="input-premium" title="Berakhir" /></FF>
-              <FF label="Nilai Kontrak (Rp)" id="amount"><input id="amount" type="text" value={fmtCurrency(form.amount)} onChange={e=>sf('amount',e.target.value.replace(/\D/g,''))} placeholder="0" className="input-premium" title="Nilai Kontrak"/></FF>
-              <FF label="Auto Renewal" id="auto_r"><select id="auto_r" value={form.auto_renewal} onChange={e=>sf('auto_renewal',e.target.value)} className="input-premium" title="Auto Renewal"><option value="false">Tidak</option><option value="true">Ya</option></select></FF>
-              <FF label="Status" id="status"><select id="status" value={form.status} onChange={e=>sf('status',e.target.value)} className="input-premium" title="Status"><option value="Active">Active</option><option value="Expired">Expired</option><option value="Terminated">Terminated</option></select></FF>
-              <FF label="STO Status" id="sto"><input id="sto" type="text" value={form.sto_status} onChange={e=>sf('sto_status',e.target.value)} placeholder="STO Status" className="input-premium" title="STO Status"/></FF>
-            </div>
-            <FF label="Link Dokumen Digital (URL)" id="dig_url"><input id="dig_url" type="url" value={form.digital_doc_url} onChange={e=>sf('digital_doc_url',e.target.value)} placeholder="https://..." className="input-premium" title="Link Dokumen Digital"/></FF>
-            <FF label="Catatan" id="notes"><textarea id="notes" rows={2} value={form.notes} onChange={e=>sf('notes',e.target.value)} placeholder="Catatan tambahan..." className="input-premium resize-y" title="Catatan"/></FF>
-            <div className="modal-footer-border">
-              <button className="btn" onClick={closeForm} disabled={saving} title="Batal">Batal</button>
-              <button className="btn btn-primary min-w-130" onClick={save} disabled={saving} title={editRow?'Simpan Perubahan':'Tambah Dokumen'}>
-                {saving?<><Loader2 size={14} className="animate-spin"/> Menyimpan…</>:<><Save size={14}/> {editRow?'Simpan':'Tambah'}</>}
-              </button>
-            </div>
-          </div>
-        </ModalShell>
-      )}
+      {/* Form Modal (Add/Edit) */}
+      <DocumentFormModal
+        showAdd={showAdd}
+        editRow={editRow}
+        form={form}
+        formErr={formErr}
+        saving={saving}
+        meta={meta}
+        closeForm={closeForm}
+        sf={sf}
+        save={save}
+        fmtCurrency={fmtCurrency}
+      />
     </div>
   );
 }

@@ -5,7 +5,7 @@ import {
   Search, Plus, Eye, Edit2, Phone, Mail,
   RefreshCw, Trash2, AlertCircle, Users, Handshake, Coins, Play
 } from 'lucide-react';
-import { Badge, PaginationBar, TableShell } from '@/components/PageShared';
+import { Badge, PaginationBar, TableShell, SearchableSelect } from '@/components/PageShared';
 import {
   Stars, VendorDetailModal, VendorFormModal,
   Vendor, VendorDetail, Meta, FormData, STAT_CLS
@@ -132,6 +132,20 @@ export default function VendorsPage() {
       setHasProcessed(true);
       fetchVendors(1, tempSearch, tempCat, tempStat);
     }
+  };
+
+  const handleReset = () => {
+    setTempSearch('');
+    setTempCat('');
+    setTempStat('');
+    setSearch('');
+    setCat('');
+    setStat('');
+    setVendors([]);
+    setTotal(0);
+    setTotalPages(1);
+    setPage(1);
+    setHasProcessed(false);
   };
 
   // Open detail
@@ -272,42 +286,61 @@ export default function VendorsPage() {
       </div>
 
       {/* FILTERS */}
-      <div className="filter-bar animate-slide-up" style={{ '--delay': '300ms' } as React.CSSProperties}>
-        <div className="search-box">
-          <Search size={15} className="search-icon" />
+      <div className="filter-bar animate-slide-up flex flex-wrap gap-3 items-center bg-white p-4 rounded-2xl border border-slate-100 shadow-xs mb-6" style={{ position: 'relative', zIndex: 10 }}>
+        <div className="search-box flex-1 min-w-[240px]">
+          <Search size={15} className="search-icon text-slate-400" />
           <input
             id="ven_search"
             type="text" placeholder="Cari nama, kode, kategori, PIC, telepon..."
             value={tempSearch} onChange={e => setTempSearch(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') handleProcess(); }}
-            className="input-premium w-full pl-9"
+            className="input-premium w-full pl-9 text-slate-700 font-500"
             title="Cari Vendor"
             aria-label="Cari data mitra vendor"
           />
         </div>
-        <select 
-          id="ven_cat_filter"
-          value={tempCat} onChange={e => setTempCat(e.target.value)}
-          className="input-premium w-auto" title="Filter Kategori" aria-label="Filter berdasarkan kategori vendor">
-          <option value="">Semua Kategori</option>
-          {meta.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-        <select 
-          id="ven_stat_filter"
-          value={tempStat} onChange={e => setTempStat(e.target.value)}
-          className="input-premium w-auto" title="Filter Status" aria-label="Filter berdasarkan status vendor">
-          <option value="">Semua Status</option>
-          <option value="Active">Active</option>
-          <option value="Inactive">Inactive</option>
-          <option value="Pending Evaluation">Pending Evaluation</option>
-        </select>
-        <button 
-          className="btn btn-primary flex items-center gap-1.5 shrink-0" 
-          onClick={handleProcess} 
-          title="Proses Pencarian"
-        >
-          <Play size={14} fill="currentColor" /> Proses
-        </button>
+
+        <div className="w-[180px]">
+          <SearchableSelect
+            id="ven_cat_filter"
+            value={tempCat}
+            onChange={v => setTempCat(v)}
+            options={meta.categories.map(c => ({ id: c.id, name: c.name }))}
+            placeholder="— Semua Kategori —"
+          />
+        </div>
+
+        <div className="w-[180px]">
+          <SearchableSelect
+            id="ven_stat_filter"
+            value={tempStat}
+            onChange={v => setTempStat(v)}
+            options={[
+              { id: 'Active', name: 'Active' },
+              { id: 'Inactive', name: 'Inactive' },
+              { id: 'Pending Evaluation', name: 'Pending Evaluation' }
+            ]}
+            placeholder="— Semua Status —"
+          />
+        </div>
+
+        <div className="flex gap-2">
+          <button 
+            className="btn btn-primary bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl shadow-xs transition-all duration-300 font-600 px-4 py-2 cursor-pointer flex items-center gap-1.5"
+            onClick={handleProcess} 
+            title="Cari Vendor"
+          >
+            <Search size={14} /> Cari
+          </button>
+
+          <button 
+            className="btn border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl font-600 px-3.5 py-2 cursor-pointer transition-all duration-200"
+            onClick={handleReset} 
+            title="Reset Filter"
+          >
+            Reset
+          </button>
+        </div>
       </div>
 
       {/* TABLE / INITIAL STATE */}
@@ -320,17 +353,38 @@ export default function VendorsPage() {
           </button>
         </div>
       ) : !hasProcessed ? (
-        <div 
-          className="animate-slide-up py-16 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/40 glow-slate flex flex-col items-center justify-center"
-          style={{ '--delay': '400ms' } as React.CSSProperties}
-        >
-          <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-3 shadow-sm">
-            <Search size={22} />
+        <div className="animate-slide-up flex flex-col items-center justify-center bg-white border border-slate-100 rounded-3xl shadow-sm text-center max-w-2xl mx-auto my-6 relative overflow-hidden" style={{ padding: '5rem 2rem' }}>
+          {/* Decorative gradients */}
+          <div className="absolute -top-24 -left-24 w-48 h-48 rounded-full bg-blue-500/5 blur-3xl pointer-events-none"></div>
+          <div className="absolute -bottom-24 -right-24 w-48 h-48 rounded-full bg-indigo-500/5 blur-3xl pointer-events-none"></div>
+
+          {/* Modern Scanning Handshake Animation */}
+          <div className="relative w-28 h-36 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-center items-center shadow-inner mb-8 overflow-hidden">
+            {/* Background scanner line */}
+            <div className="scanner-line absolute left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-600 shadow-md shadow-blue-500/80"></div>
+            
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+                <Handshake size={32} className="animate-pulse" />
+              </div>
+              <span className="text-[9px] font-800 text-slate-400 uppercase tracking-widest">Kemitraan</span>
+            </div>
           </div>
-          <p className="text-sm-bold text-text mb-1">Pencarian Vendor Partnerships</p>
-          <p className="text-xs-muted max-w-sm px-4">
-            Silakan atur kriteria filter di atas, lalu klik tombol <strong>Proses</strong> untuk memuat data.
+
+          <h2 className="text-lg font-950 text-slate-800 tracking-tight mb-2">Vendor & Mitra Partnerships</h2>
+          <p className="text-slate-400 text-xs font-600 max-w-sm mx-auto leading-relaxed">
+            Konfigurasikan kriteria pencarian di atas untuk memetakan hubungan kemitraan dan mengevaluasi reputasi vendor.
           </p>
+
+          <style dangerouslySetInnerHTML={{__html: `
+            @keyframes scan {
+              0%, 100% { top: 0%; opacity: 0.3; }
+              50% { top: 100%; opacity: 1; }
+            }
+            .scanner-line {
+              animation: scan 2.5s ease-in-out infinite;
+            }
+          `}} />
         </div>
       ) : (
         <div className="animate-slide-up" style={{ '--delay': '400ms' } as React.CSSProperties}>

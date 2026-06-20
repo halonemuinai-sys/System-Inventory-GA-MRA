@@ -89,8 +89,21 @@ export default function RentalsPage() {
     fetchKpi(filters);
   };
 
+  const handleReset = () => {
+    setSearch('');
+    setComp('');
+    setRows([]);
+    setTotal(0);
+    setTotalPages(1);
+    setPage(1);
+    setHasSearched(false);
+    const filters = { search: '', comp: '' };
+    setApplied(filters);
+    setKpi({ total_items: 0, total_price: 0 });
+  };
+
   useEffect(() => {
-    fetchKpi({ search: '', comp: '' });
+    // Do not load data automatically on mount, wait for filter and search submit
   }, []);
 
   useEffect(() => {
@@ -225,8 +238,8 @@ export default function RentalsPage() {
         </div>
       </div>
 
-      <div className="filter-bar">
-        <div className="search-box">
+      <div className="filter-bar animate-slide-up" style={{ position: 'relative', zIndex: 10 }}>
+        <div className="search-box flex-1 min-w-[240px]">
           <Search size={15} className="search-icon" />
           <input 
             id="rent_search"
@@ -241,20 +254,24 @@ export default function RentalsPage() {
           />
         </div>
         
-        <select 
-          id="rnt_comp_filter"
-          value={compFilter} 
-          onChange={e => setComp(e.target.value)}
-          className="input-premium w-auto max-w-[150px]" 
-          title="Filter Perusahaan"
-        >
-          <option value="">Semua Perusahaan</option>
-          {meta.companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
+        <div className="w-[200px]">
+          <SearchableSelect
+            id="rnt_comp_filter"
+            value={compFilter}
+            onChange={v => setComp(String(v))}
+            options={meta.companies.map((c: any) => ({ id: String(c.id), name: c.name }))}
+            placeholder="— Semua Perusahaan —"
+          />
+        </div>
 
-        <button className="btn btn-primary" onClick={handleSearch} title="Terapkan Filter">
-          Cari Data
-        </button>
+        <div className="flex gap-2">
+          <button className="btn btn-primary flex items-center gap-1.5" onClick={handleSearch} title="Terapkan Filter dan Cari">
+            <Search size={14} /> Cari
+          </button>
+          <button className="btn btn-outline" onClick={handleReset} title="Reset Filter">
+            Reset
+          </button>
+        </div>
 
         <div className="summary-box">
           <div className="summary-item">
@@ -272,23 +289,50 @@ export default function RentalsPage() {
           <p className="text-rose-bold">{error}</p>
           <button className="btn btn-primary mt-4" onClick={()=>load(page)} title="Coba Memuat Ulang">Coba Lagi</button>
         </div>
+      ) : !hasSearched ? (
+        <div className="animate-slide-up flex flex-col items-center justify-center bg-white border border-slate-100 rounded-3xl shadow-sm text-center max-w-2xl mx-auto my-6 relative overflow-hidden" style={{ padding: '5rem 2rem' }}>
+          {/* Decorative gradients */}
+          <div className="absolute -top-24 -left-24 w-48 h-48 rounded-full bg-blue-500/5 blur-3xl pointer-events-none"></div>
+          <div className="absolute -bottom-24 -right-24 w-48 h-48 rounded-full bg-indigo-500/5 blur-3xl pointer-events-none"></div>
+
+          {/* Modern Scanning HardDrive Animation */}
+          <div className="relative w-28 h-36 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-center items-center shadow-inner mb-8 overflow-hidden">
+            {/* Background scanner line */}
+            <div className="scanner-line absolute left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-600 shadow-md shadow-blue-500/80"></div>
+            
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+                <HardDrive size={32} className="animate-pulse" />
+              </div>
+              <span className="text-[9px] font-800 text-slate-400 uppercase tracking-widest">Device Rentals</span>
+            </div>
+          </div>
+
+          <h2 className="text-lg font-950 text-slate-800 tracking-tight mb-2">Kontrak & Alokasi Sewa Perangkat</h2>
+          <p className="text-slate-400 text-xs font-600 max-w-sm mx-auto leading-relaxed">
+            Konfigurasikan penyaringan di atas untuk meninjau status aktif, durasi sewa, dan rincian biaya rental perangkat.
+          </p>
+
+          <style dangerouslySetInnerHTML={{__html: `
+            @keyframes scan {
+              0%, 100% { top: 0%; opacity: 0.3; }
+              50% { top: 100%; opacity: 1; }
+            }
+            .scanner-line {
+              animation: scan 2.5s ease-in-out infinite;
+            }
+          `}} />
+        </div>
       ) : (
         <>
           <TableShell headers={[{label:'Order ID'},{label:'Item / Deskripsi'},{label:'Vendor'},{label:'Serial / Unit'},{label:'Masa Sewa'},{label:'Biaya (Rp)',right:true},{label:'Status',right:true},{label:'Aksi',right:true}]} loading={loading} colSpan={8}>
             {rows.length===0 ? (
               <tr><td colSpan={8} className="py-14 text-center">
                 <HardDrive size={36} className="text-text-3 mx-auto mb-3 block" />
-                {hasSearched ? (
-                  <>
-                    <p className="text-sm-bold text-text-2">Tidak ada data rental ditemukan</p>
-                    <p className="text-xs-muted mt-1">Coba ubah filter dan klik Cari Data</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-sm-bold text-text-2">Menunggu pencarian data</p>
-                    <p className="text-xs-muted mt-1">Silakan gunakan filter di atas dan klik Cari Data</p>
-                  </>
-                )}
+                <div className="flex flex-col items-center">
+                  <p className="text-sm-bold text-text-2">Tidak ada data rental ditemukan</p>
+                  <p className="text-xs-muted mt-1 mb-4">Coba ubah filter dan klik Cari Data</p>
+                </div>
               </td></tr>
             ) : rows.map((r) => {
               const expired = r.end_rent && new Date(r.end_rent) < new Date();

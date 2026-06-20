@@ -7,6 +7,9 @@ export async function GET(request: Request) {
     const page   = Math.max(1, parseInt(searchParams.get('page')  || '1'));
     const limit  = Math.min(100, Math.max(5, parseInt(searchParams.get('limit') || '20')));
     const search = searchParams.get('search') || '';
+    const docTypeId  = searchParams.get('doc_type_id') || '';
+    const mraPartyId = searchParams.get('mra_party_id') || '';
+    const status     = searchParams.get('status') || '';
     const offset = (page - 1) * limit;
 
     const conds: string[] = [];
@@ -16,6 +19,21 @@ export async function GET(request: Request) {
     if (search) {
       conds.push(`(d.doc_number ILIKE $${idx} OR d.doc_title ILIKE $${idx} OR d.counter_party ILIKE $${idx})`);
       params.push(`%${search}%`); idx++;
+    }
+
+    if (docTypeId) {
+      conds.push(`d.doc_type_id = $${idx}`);
+      params.push(parseInt(docTypeId)); idx++;
+    }
+
+    if (mraPartyId) {
+      conds.push(`d.mra_party_id = $${idx}`);
+      params.push(parseInt(mraPartyId)); idx++;
+    }
+
+    if (status) {
+      conds.push(`d.status = $${idx}`);
+      params.push(status); idx++;
     }
 
     const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';

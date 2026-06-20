@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Search, Plus, Eye, Edit2, Loader2, Save, Wrench, AlertCircle, Trash2 } from 'lucide-react';
-import { 
-  Badge, ModalShell, FF, SLabel, PaginationBar, 
-  TableShell, InfoRow, SBox, FormError, iStyle, SearchableSelect
-} from '@/components/PageShared';
+import { Search, Plus, Eye, Edit2, Loader2, RefreshCw, Trash2, AlertCircle, Wrench } from 'lucide-react';
+import { Badge, PaginationBar, TableShell, SearchableSelect } from '@/components/PageShared';
+import {
+  MaintenanceDetailModal, MaintenanceFormModal, MaintenanceDeleteModal,
+  mtnStatus, Maintenance, MaintenanceDetail, Meta, FormData
+} from '@/components/MaintenanceComponents';
 
 const fmt = (v: number) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(v || 0);
 const fmtDate = (d: string) => d ? new Date(d).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' }) : '—';
@@ -20,36 +21,29 @@ const fmtCurrency = (s: string) => {
   return new Intl.NumberFormat('id-ID').format(parseInt(num));
 };
 
-function mtnStatus(expiry: string, status?: string) {
-  if (status === 'Completed') return { label:'Completed', colorClass:'badge-emerald', cls:'text-emerald' };
-  if (!expiry) return { label:'Active', colorClass:'badge-emerald', cls:'text-emerald' };
-  const d = new Date(expiry); const now = new Date();
-  const diff = Math.ceil((d.getTime() - now.getTime()) / 86400000);
-  if (diff < 0)  return { label:'Expired', colorClass:'badge-rose', cls:'text-rose' };
-  if (diff <= 30) return { label:'Renewal', colorClass:'badge-amber', cls:'text-amber' };
-  return { label:'Active', colorClass:'badge-emerald', cls:'text-emerald' };
-}
-
-const EMPTY = { 
+const EMPTY_FORM: FormData = { 
   company_id:'', asset_name:'', service_type:'', room_area:'', 
   pic:'', vendor_id:'', qty:1, est_cost:'', total_cost:'', 
   expiry_date:'', information:'', status:'Active' 
 };
 
 export default function MaintenancePage() {
-  const [rows, setRows]             = useState<any[]>([]);
+  const [rows, setRows]             = useState<Maintenance[]>([]);
   const [total, setTotal]           = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [page, setPage]             = useState(1);
-  const [loading, setLoading]       = useState(true);
+  const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState<string|null>(null);
   const [search, setSearch]         = useState('');
-  const [meta, setMeta]             = useState<{companies:any[];vendors:any[]}>({companies:[],vendors:[]});
-  const [detail, setDetail]         = useState<any>(null);
+  const [companyId, setCompanyId]   = useState('');
+  const [status, setStatus]         = useState('');
+  const [isSearched, setIsSearched] = useState(false);
+  const [meta, setMeta]             = useState<Meta>({ companies: [], vendors: [] });
+  const [detail, setDetail]         = useState<MaintenanceDetail | null>(null);
   const [dlLoading, setDlLoading]   = useState(false);
   const [showAdd, setShowAdd]       = useState(false);
-  const [editRow, setEditRow]       = useState<any>(null);
-  const [form, setForm]             = useState<any>(EMPTY);
+  const [editRow, setEditRow]       = useState<MaintenanceDetail | null>(null);
+  const [form, setForm]             = useState<FormData>(EMPTY_FORM);
   const [saving, setSaving]         = useState(false);
   const [formErr, setFormErr]       = useState('');
   
@@ -67,14 +61,34 @@ export default function MaintenancePage() {
   const load = useCallback(async (p: number) => {
     setLoading(true); setError(null);
     try {
-      const qs = new URLSearchParams({ page:String(p), limit:String(LIMIT), ...(search&&{search}) });
+      const qs = new URLSearchParams({ 
+        page: String(p), 
+        limit: String(LIMIT), 
+        ...(search && { search }),
+        ...(companyId && { company_id: companyId }),
+        ...(status && { status })
+      });
       const res = await fetch(`/api/maintenance?${qs}`);
       const j = await res.json();
       setRows(j.data); setTotal(j.total); setTotalPages(j.totalPages); setPage(j.page);
+      setIsSearched(true);
     } catch(e:any) { setError(e.message); } finally { setLoading(false); }
-  }, [search]);
+  }, [search, companyId, status]);
 
-  useEffect(() => { load(1); }, [load]);
+  const handleSearch = () => {
+    load(1);
+  };
+
+  const handleReset = () => {
+    setSearch('');
+    setCompanyId('');
+    setStatus('');
+    setRows([]);
+    setTotal(0);
+    setTotalPages(1);
+    setPage(1);
+    setIsSearched(false);
+  };
 
   const openDetail = async (id:number) => { 
     setDlLoading(true); setDetail(null); 
@@ -102,9 +116,9 @@ export default function MaintenancePage() {
     setFormErr('');
   };
 
-  const openAdd   = () => { setEditRow(null); setForm(EMPTY); setFormErr(''); setShowAdd(true); };
-  const closeForm = () => { setShowAdd(false); setEditRow(null); setForm(EMPTY); setFormErr(''); };
-  const sf        = (k:string,v:string) => setForm((f:any) => ({...f,[k]:v}));
+  const openAdd   = () => { setEditRow(null); setForm(EMPTY_FORM); setFormErr(''); setShowAdd(true); };
+  const closeForm = () => { setShowAdd(false); setEditRow(null); setForm(EMPTY_FORM); setFormErr(''); };
+  const sf        = (k: keyof FormData, v: string | number) => setForm((f) => ({...f, [k]: v}));
 
   const confirmDelete = (item: { id: number; name: string }) => {
     setDeleteItem(item);
@@ -138,7 +152,7 @@ export default function MaintenancePage() {
           ...form, 
           company_id:parseInt(form.company_id)||null, 
           vendor_id:parseInt(form.vendor_id)||null, 
-          qty:parseInt(form.qty)||1, 
+          qty:parseInt(String(form.qty))||1, 
           est_cost:parseNum(form.est_cost), 
           total_cost:parseNum(form.total_cost),
           expired_date:form.expiry_date 
@@ -156,22 +170,64 @@ export default function MaintenancePage() {
         <button className="btn btn-primary" onClick={openAdd} title="Tambah Layanan Baru"><Plus size={16}/> Tambah Layanan</button>
       </div>
 
-      <div className="filter-bar">
-        <div className="search-box">
-          <Search size={15} className="search-icon"/>
+      <div className="filter-bar animate-slide-up flex flex-wrap gap-3 items-center bg-white p-4 rounded-2xl border border-slate-100 shadow-xs mb-6" style={{ position: 'relative', zIndex: 10 }}>
+        <div className="search-box flex-1 min-w-[240px]">
+          <Search size={15} className="search-icon text-slate-400"/>
           <input 
             id="mtn_search"
             type="text" 
-            placeholder="Cari aset, tipe servis, pic..." 
+            placeholder="Cari nama aset, tipe, PIC..." 
             value={search} 
-            onChange={e=>{setSearch(e.target.value);setPage(1);}} 
-            className="input-premium w-full pl-9" 
+            onChange={e => setSearch(e.target.value)} 
+            onKeyDown={e => e.key === 'Enter' && handleSearch()}
+            className="input-premium w-full pl-9 text-slate-700 font-500" 
             title="Cari Layanan"
             aria-label="Cari layanan maintenance"
           />
         </div>
-        <div className="summary-item">
-          <span className="text-text-3">Total: </span><span className="font-800 text-text">{fmt(total)} layanan</span>
+
+        {/* Company Filter */}
+        <div className="w-[200px]">
+          <SearchableSelect
+            id="mtn_filter_company"
+            value={companyId}
+            onChange={v => setCompanyId(v)}
+            options={meta.companies.map((c: any) => ({ id: c.id, name: c.name }))}
+            placeholder="— Semua Perusahaan —"
+          />
+        </div>
+
+        {/* Status Filter */}
+        <div className="w-[160px]">
+          <SearchableSelect
+            id="mtn_filter_status"
+            value={status}
+            onChange={v => setStatus(v)}
+            options={[
+              { id: 'Active', name: 'Active' },
+              { id: 'Completed', name: 'Completed' },
+              { id: 'Cancelled', name: 'Cancelled' }
+            ]}
+            placeholder="— Semua Status —"
+          />
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={handleSearch}
+            className="btn btn-primary bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl shadow-xs transition-all duration-300 font-600 px-4 py-2 cursor-pointer flex items-center gap-1.5"
+            title="Terapkan Filter dan Cari"
+          >
+            <Search size={14} /> Cari
+          </button>
+
+          <button
+            onClick={handleReset}
+            className="btn border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl font-600 px-3.5 py-2 cursor-pointer transition-all duration-200"
+            title="Reset Filter"
+          >
+            Reset
+          </button>
         </div>
       </div>
 
@@ -180,6 +236,40 @@ export default function MaintenancePage() {
           <AlertCircle size={36} className="text-rose mb-3" />
           <p className="text-rose-bold">{error}</p>
           <button className="btn btn-primary mt-4" onClick={()=>load(page)} title="Coba Memuat Ulang">Coba Lagi</button>
+        </div>
+      ) : !isSearched ? (
+        <div className="animate-slide-up flex flex-col items-center justify-center bg-white border border-slate-100 rounded-3xl shadow-sm text-center max-w-2xl mx-auto my-6 relative overflow-hidden" style={{ padding: '5rem 2rem' }}>
+          {/* Decorative gradients */}
+          <div className="absolute -top-24 -left-24 w-48 h-48 rounded-full bg-blue-500/5 blur-3xl pointer-events-none"></div>
+          <div className="absolute -bottom-24 -right-24 w-48 h-48 rounded-full bg-indigo-500/5 blur-3xl pointer-events-none"></div>
+
+          {/* Modern Scanning Wrench Animation */}
+          <div className="relative w-28 h-36 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-center items-center shadow-inner mb-8 overflow-hidden">
+            {/* Background scanner line */}
+            <div className="scanner-line absolute left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-600 shadow-md shadow-blue-500/80"></div>
+            
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+                <Wrench size={32} className="animate-pulse" />
+              </div>
+              <span className="text-[9px] font-800 text-slate-400 uppercase tracking-widest">Pemeliharaan</span>
+            </div>
+          </div>
+
+          <h2 className="text-lg font-950 text-slate-800 tracking-tight mb-2">Jadwal & Biaya Pemeliharaan</h2>
+          <p className="text-slate-400 text-xs font-600 max-w-sm mx-auto leading-relaxed">
+            Sesuaikan kriteria penyaringan di atas untuk menelusuri jadwal perawatan dan detail perbaikan aset.
+          </p>
+
+          <style dangerouslySetInnerHTML={{__html: `
+            @keyframes scan {
+              0%, 100% { top: 0%; opacity: 0.3; }
+              50% { top: 100%; opacity: 1; }
+            }
+            .scanner-line {
+              animation: scan 2.5s ease-in-out infinite;
+            }
+          `}} />
         </div>
       ) : (
         <>
@@ -224,117 +314,37 @@ export default function MaintenancePage() {
         </>
       )}
 
-      {/* Detail */}
-      {(detail||dlLoading)&&(
-        <ModalShell title={detail?`Maintenance — ${detail.asset_name||detail.room_area||'#'+detail.id}`:'Memuat…'} onClose={()=>setDetail(null)} size="md">
-          {dlLoading||!detail ? <div className="flex-center py-12"><Loader2 size={28} className="animate-spin text-blue"/></div> : (
-            <div className="flex flex-col gap-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h2 className="text-lg-black">{detail.asset_name||'General Maintenance'}</h2>
-                  <p className="text-xs-muted mt-1">{detail.room_area||''} {detail.service_type?`· ${detail.service_type}`:''}</p>
-                </div>
-                <Badge label={mtnStatus(detail.expired_date, detail.status).label} colorClass={mtnStatus(detail.expired_date, detail.status).colorClass}/>
-              </div>
-              <div className="detail-grid">
-                <SBox icon={<Wrench size={14}/>} title="Detail Pekerjaan">
-                  <InfoRow label="Tipe Servis"   value={detail.service_type}/>
-                  <InfoRow label="Area / Ruangan" value={detail.room_area}/>
-                  <InfoRow label="PIC"           value={detail.pic}/>
-                  <InfoRow label="Vendor"        value={detail.vendor_name}/>
-                  <InfoRow label="Perusahaan"    value={detail.company}/>
-                </SBox>
-                <SBox title="Biaya & Jadwal">
-                  <InfoRow label="Kuantitas"     value={detail.qty}/>
-                  <InfoRow label="Est. Biaya"    value={`Rp ${fmt(parseFloat(String(detail.est_cost||0)))}`}/>
-                  <InfoRow label="Total Biaya"   value={<span className="text-sm-bold text-amber">Rp {fmt(parseFloat(String(detail.total_cost||0)))}</span>}/>
-                  <InfoRow label="Jatuh Tempo"   value={<span className={`text-sm-bold ${mtnStatus(detail.expired_date,detail.status).cls}`}>{fmtDate(detail.expired_date)}</span>}/>
-                </SBox>
-              </div>
-              {detail.information&&<div className="info-card"><p className="text-xs-bold mb-1">Informasi</p><p className="text-sm-muted lh-1-6">{detail.information}</p></div>}
-              <div className="modal-footer-actions">
-                <button className="btn" onClick={()=>{setDetail(null);openEdit(detail.id);}} title="Edit Layanan"><Edit2 size={14}/> Edit</button>
-                <button className="btn btn-primary" onClick={()=>setDetail(null)} title="Tutup Modal">Tutup</button>
-              </div>
-            </div>
-          )}
-        </ModalShell>
-      )}
+      {/* Detail Modal */}
+      <MaintenanceDetailModal
+        detail={detail}
+        dlLoading={dlLoading}
+        onClose={() => setDetail(null)}
+        openEdit={openEdit}
+        fmtDate={fmtDate}
+        fmt={fmt}
+      />
 
-      {/* Add/Edit */}
-      {(showAdd||editRow)&&(
-        <ModalShell title={editRow?`Edit Maintenance`:'Tambah Layanan Baru'} onClose={closeForm} size="md" closeOnClickOutside={false}>
-          <div className="flex flex-col gap-4">
-            <FormError msg={formErr}/>
-            <SLabel>Detail Perbaikan / Servis</SLabel>
-            <div className="detail-grid">
-              <FF label="Perusahaan" id="mtn_co" required><select id="mtn_co" value={form.company_id} onChange={e=>sf('company_id',e.target.value)} className="input-premium" title="Pilih Perusahaan"><option value="">— Pilih —</option>{meta.companies.map((c:any)=><option key={c.id} value={c.id}>{c.name}</option>)}</select></FF>
-              <FF label="Nama Aset / Unit" id="mtn_asset" required><input id="mtn_asset" type="text" value={form.asset_name} onChange={e=>sf('asset_name',e.target.value)} placeholder="Mis: AC Split 2PK, Lift, dll" className="input-premium" title="Nama Aset"/></FF>
-              <FF label="Area / Ruangan" id="mtn_area"><input id="mtn_area" type="text" value={form.room_area} onChange={e=>sf('room_area',e.target.value)} placeholder="Lantai 3, Ruang Rapat" className="input-premium" title="Area / Ruangan"/></FF>
-              <FF label="Tipe Servis" id="mtn_type"><input id="mtn_type" type="text" value={form.service_type} onChange={e=>sf('service_type',e.target.value)} placeholder="Routine / Repair / Cleaning" className="input-premium" title="Tipe Servis"/></FF>
-              <FF label="PIC Pelaksana" id="mtn_pic"><input id="mtn_pic" type="text" value={form.pic} onChange={e=>sf('pic',e.target.value)} placeholder="Nama PIC" className="input-premium" title="PIC Pelaksana"/></FF>
-              <FF label="Vendor / Bengkel" id="mtn_vendor">
-                <SearchableSelect
-                  id="mtn_vendor"
-                  value={form.vendor_id}
-                  onChange={v => sf('vendor_id', v)}
-                  options={meta.vendors.map((v: any) => ({ id: v.id, name: v.vendor_name || v.name }))}
-                  placeholder="— Pilih Vendor —"
-                />
-              </FF>
-              <FF label="Kuantitas Unit" id="mtn_qty"><input id="mtn_qty" type="number" value={form.qty} onChange={e=>sf('qty',e.target.value)} min={1} className="input-premium" title="Kuantitas Unit"/></FF>
-              <FF label="Jatuh Tempo / Expiry" id="mtn_expiry"><input id="mtn_expiry" type="date" value={form.expiry_date} onChange={e=>sf('expiry_date',e.target.value)} className="input-premium" title="Tanggal Jatuh Tempo" /></FF>
-              <FF label="Estimasi Biaya (Rp)" id="mtn_est"><input id="mtn_est" type="text" value={fmtCurrency(form.est_cost)} onChange={e=>sf('est_cost',e.target.value.replace(/\D/g,''))} placeholder="0" className="input-premium" title="Estimasi Biaya"/></FF>
-              <FF label="Total Biaya (Rp)" id="mtn_total"><input id="mtn_total" type="text" value={fmtCurrency(form.total_cost)} onChange={e=>sf('total_cost',e.target.value.replace(/\D/g,''))} placeholder="0" className="input-premium" title="Total Biaya"/></FF>
-              <FF label="Status" id="mtn_status"><select id="mtn_status" value={form.status} onChange={e=>sf('status',e.target.value)} className="input-premium" title="Status"><option value="Active">Active</option><option value="Completed">Completed</option><option value="Cancelled">Cancelled</option></select></FF>
-            </div>
-            <FF label="Informasi Tambahan" id="mtn_info"><textarea id="mtn_info" rows={2} value={form.information} onChange={e=>sf('information',e.target.value)} placeholder="Catatan servis..." className="input-premium resize-y" title="Informasi Tambahan"/></FF>
-            <div className="modal-footer-border">
-              <button className="btn" onClick={closeForm} disabled={saving} title="Batal">Batal</button>
-              <button className="btn btn-primary min-w-130" onClick={save} disabled={saving} title={editRow?'Simpan Perubahan':'Tambah Layanan'}>
-                {saving?<><Loader2 size={14} className="animate-spin"/> Menyimpan…</>:<><Save size={14}/> {editRow?'Simpan':'Tambah'}</>}
-              </button>
-            </div>
-          </div>
-        </ModalShell>
-      )}
-      {deleteItem && (
-        <ModalShell 
-          title="" 
-          onClose={() => !deleting && setDeleteItem(null)} 
-          size="sm"
-          overlayClassName="modal-top-align"
-          containerClassName="modal-top-content"
-        >
-          <div className="flex flex-col gap-3 text-center items-center py-2">
-            <div className="w-12 h-12 bg-rose-light text-rose rounded-full flex items-center justify-center mb-1">
-              <Trash2 size={24} />
-            </div>
-            <h3 className="text-md font-800 text-text">Hapus Data?</h3>
-            <p className="text-sm text-text-2">
-              Anda yakin ingin menghapus <b>{deleteItem.name}</b>?
-            </p>
-            <div className="flex gap-3 w-full mt-2">
-              <button 
-                type="button" 
-                className="btn flex-1 justify-center py-2" 
-                onClick={() => setDeleteItem(null)}
-                disabled={deleting}
-              >
-                Batal
-              </button>
-              <button 
-                type="button" 
-                className="btn bg-rose text-white border-none flex-1 justify-center py-2 hover:opacity-90" 
-                onClick={executeDelete}
-                disabled={deleting}
-              >
-                {deleting ? <><Loader2 size={16} className="animate-spin" /> ...</> : 'Ya, Hapus'}
-              </button>
-            </div>
-          </div>
-        </ModalShell>
-      )}
+      {/* Add/Edit Modal */}
+      <MaintenanceFormModal
+        showAdd={showAdd}
+        editRow={editRow}
+        form={form}
+        formErr={formErr}
+        saving={saving}
+        meta={meta}
+        closeForm={closeForm}
+        sf={sf}
+        save={save}
+        fmtCurrency={fmtCurrency}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <MaintenanceDeleteModal
+        deleteItem={deleteItem}
+        deleting={deleting}
+        onClose={() => setDeleteItem(null)}
+        executeDelete={executeDelete}
+      />
     </div>
   );
 }

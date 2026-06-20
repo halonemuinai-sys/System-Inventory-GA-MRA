@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { Search, Plus, Eye, Edit2, ShieldCheck, AlertCircle, Trash2, Building2, Coins } from 'lucide-react';
-import { Badge, PaginationBar, TableShell } from '@/components/PageShared';
+import { Badge, PaginationBar, TableShell, SearchableSelect } from '@/components/PageShared';
 import { InsuranceDetailModal, InsuranceFormModal } from '@/components/InsuranceComponents';
 
 const fmt = (v: number) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(v || 0);
@@ -40,11 +40,12 @@ export default function InsurancePage() {
   const [total, setTotal]           = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [page, setPage]             = useState(1);
-  const [loading, setLoading]       = useState(true);
+  const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState<string|null>(null);
   const [search, setSearch]         = useState('');
   const [companyId, setCompanyId]   = useState('');
   const [status, setStatus]         = useState('');
+  const [isSearched, setIsSearched] = useState(false);
   const [meta, setMeta]             = useState<{companies:any[];vehicles:any[]}>({companies:[],vehicles:[]});
   const [detail, setDetail]         = useState<any>(null);
   const [dlLoading, setDlLoading]   = useState(false);
@@ -76,10 +77,24 @@ export default function InsurancePage() {
       if (!res.ok) throw new Error('Gagal memuat data polis');
       const j = await res.json();
       setRows(j.data || []); setTotal(j.total || 0); setTotalPages(j.totalPages || 1); setPage(j.page || 1);
+      setIsSearched(true);
     } catch(e:any) { setError(e.message); } finally { setLoading(false); }
   }, [search, companyId, status]);
 
-  useEffect(() => { load(1); }, [load]);
+  const handleSearch = () => {
+    load(1);
+  };
+
+  const handleReset = () => {
+    setSearch('');
+    setCompanyId('');
+    setStatus('');
+    setRows([]);
+    setTotal(0);
+    setTotalPages(1);
+    setPage(1);
+    setIsSearched(false);
+  };
 
   const handleDelete = async (id: number, name: string) => {
     if (!confirm(`Hapus polis "${name}"? Tindakan ini tidak bisa dibatalkan.`)) return;
@@ -183,48 +198,65 @@ export default function InsurancePage() {
         </div>
       </div>
 
-      <div className="filter-bar animate-slide-up" style={{ '--delay': '300ms' } as React.CSSProperties}>
-        <div className="search-box">
-          <Search size={15} className="search-icon"/>
+      <div className="filter-bar animate-slide-up flex flex-wrap gap-3 items-center bg-white p-4 rounded-2xl border border-slate-100 shadow-xs mb-6" style={{ position: 'relative', zIndex: 10 }}>
+        <div className="search-box flex-1 min-w-[240px]">
+          <Search size={15} className="search-icon text-slate-400"/>
           <input 
             id="ins_search"
             type="text" 
-            placeholder="Cari nomor polis, perusahaan asuransi, plat..." 
+            placeholder="Cari nomor polis, asuransi, plat..." 
             value={search} 
-            onChange={e=>{setSearch(e.target.value);setPage(1);}} 
-            className="input-premium w-full pl-9" 
+            onChange={e => setSearch(e.target.value)} 
+            onKeyDown={e => e.key === 'Enter' && handleSearch()}
+            className="input-premium w-full pl-9 text-slate-700 font-500" 
             title="Cari Polis"
             aria-label="Cari data polis asuransi"
           />
         </div>
 
         {/* Company Filter */}
-        <select
-          id="ins_filter_company"
-          value={companyId}
-          onChange={(e) => { setCompanyId(e.target.value); setPage(1); }}
-          className="input-premium max-w-[200px]"
-          title="Filter Perusahaan"
-        >
-          <option value="">Semua Perusahaan</option>
-          {meta.companies.map((c: any) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
+        <div className="w-[200px]">
+          <SearchableSelect
+            id="ins_filter_company"
+            value={companyId}
+            onChange={v => setCompanyId(v)}
+            options={meta.companies.map((c: any) => ({ id: c.id, name: c.name }))}
+            placeholder="— Semua Perusahaan —"
+          />
+        </div>
 
         {/* Status Filter */}
-        <select
-          id="ins_filter_status"
-          value={status}
-          onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-          className="input-premium max-w-[150px]"
-          title="Filter Status"
-        >
-          <option value="">Semua Status</option>
-          <option value="Active">Aktif</option>
-          <option value="Renewal">Renewal ({"<= 30 Hari"})</option>
-          <option value="Expired">Expired</option>
-        </select>
+        <div className="w-[160px]">
+          <SearchableSelect
+            id="ins_filter_status"
+            value={status}
+            onChange={v => setStatus(v)}
+            options={[
+              { id: 'Active', name: 'Aktif' },
+              { id: 'Renewal', name: 'Renewal (<= 30 Hari)' },
+              { id: 'Expired', name: 'Expired' }
+            ]}
+            placeholder="— Semua Status —"
+          />
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={handleSearch}
+            className="btn btn-primary bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl shadow-xs transition-all duration-300 font-600 px-4 py-2 cursor-pointer flex items-center gap-1.5"
+            title="Terapkan Filter dan Cari"
+          >
+            <Search size={14} /> Cari
+          </button>
+
+          <button
+            onClick={handleReset}
+            className="btn border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl font-600 px-3.5 py-2 cursor-pointer transition-all duration-200"
+            title="Reset Filter"
+          >
+            Reset
+          </button>
+        </div>
       </div>
 
       {error ? (
@@ -232,6 +264,40 @@ export default function InsurancePage() {
           <AlertCircle size={36} className="text-rose mb-3" />
           <p className="text-rose-bold">{error}</p>
           <button className="btn btn-primary mt-4" onClick={()=>load(page)} title="Coba Memuat Ulang">Coba Lagi</button>
+        </div>
+      ) : !isSearched ? (
+        <div className="animate-slide-up flex flex-col items-center justify-center bg-white border border-slate-100 rounded-3xl shadow-sm text-center max-w-2xl mx-auto my-6 relative overflow-hidden" style={{ padding: '5rem 2rem' }}>
+          {/* Decorative gradients */}
+          <div className="absolute -top-24 -left-24 w-48 h-48 rounded-full bg-blue-500/5 blur-3xl pointer-events-none"></div>
+          <div className="absolute -bottom-24 -right-24 w-48 h-48 rounded-full bg-indigo-500/5 blur-3xl pointer-events-none"></div>
+
+          {/* Modern Scanning Shield Animation */}
+          <div className="relative w-28 h-36 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-center items-center shadow-inner mb-8 overflow-hidden">
+            {/* Background scanner line */}
+            <div className="scanner-line absolute left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-600 shadow-md shadow-blue-500/80"></div>
+            
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+                <ShieldCheck size={32} className="animate-pulse" />
+              </div>
+              <span className="text-[9px] font-800 text-slate-400 uppercase tracking-widest">Polis Aktif</span>
+            </div>
+          </div>
+
+          <h2 className="text-lg font-950 text-slate-800 tracking-tight mb-2">Arsip Polis Asuransi</h2>
+          <p className="text-slate-400 text-xs font-600 max-w-sm mx-auto leading-relaxed">
+            Sesuaikan parameter penyaringan di atas untuk meninjau status aktif, masa berlaku, dan rincian premi asuransi.
+          </p>
+
+          <style dangerouslySetInnerHTML={{__html: `
+            @keyframes scan {
+              0%, 100% { top: 0%; opacity: 0.3; }
+              50% { top: 100%; opacity: 1; }
+            }
+            .scanner-line {
+              animation: scan 2.5s ease-in-out infinite;
+            }
+          `}} />
         </div>
       ) : (
         <div className="animate-slide-up" style={{ '--delay': '400ms' } as React.CSSProperties}>
